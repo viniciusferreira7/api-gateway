@@ -1,8 +1,22 @@
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { EnvService } from './env/env.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+
+  const envService = app.get(EnvService);
+
+  const port = envService.get('PORT');
+
+  app.use(helmet());
+  app.enableCors({
+    origin: envService.get('CORS_ORIGIN'),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  await app.listen(port);
 }
 bootstrap();
