@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { envSchema } from './env/env';
 import { EnvModule } from './env/env.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { ProxyModule } from './proxy/proxy.module';
 
 @Module({
   imports: [
@@ -22,6 +24,9 @@ import { EnvModule } from './env/env.module';
       },
     ]),
     EnvModule,
+    ProxyModule,
+    ConfigModule,
+    GatewayModule,
   ],
   controllers: [AppController],
   providers: [AppService],
