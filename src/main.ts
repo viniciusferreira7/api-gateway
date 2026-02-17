@@ -38,5 +38,8 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   await app.listen(port);
+
+  console.log(`🚀 API Gateway running on port ${port}`);
+  console.log(`📚 Swagger documentation: <http://localhost:${port}/api>`);
 }
 bootstrap();
