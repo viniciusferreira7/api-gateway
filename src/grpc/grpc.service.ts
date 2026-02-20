@@ -1,26 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
 import { ClientOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
-import type { Env } from '@/env/env';
+import { GatewayService } from '@/gateway/gateway.service';
 
 @Injectable()
 export class GrpcConfigService {
-  constructor(private readonly configService: ConfigService<Env, true>) {}
+  constructor(private readonly gatewayService: GatewayService) {}
 
-  //TODO: Need proxy service
-
-  createOptions(
+  public createOptions(
+    serviceName: keyof ReturnType<GatewayService['serviceConfig']>,
     packageName: string,
-    protoFile: string,
-    url: string
+    protoFile: string
   ): ClientOptions {
+    const service = this.gatewayService.serviceConfig[serviceName];
+
     return {
       transport: Transport.GRPC,
       options: {
         package: packageName,
         protoPath: join(__dirname, `../proto/${protoFile}`),
-        url,
+        url: service.url,
       },
     };
   }
