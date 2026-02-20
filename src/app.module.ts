@@ -6,8 +6,8 @@ import { AppService } from './app.service';
 import { envSchema } from './env/env';
 import { EnvModule } from './env/env.module';
 import { GatewayModule } from './gateway/gateway.module';
-import { ProxyModule } from './proxy/proxy.module';
 import { GrpcModule } from './grpc/grpc.module';
+import { ProxyModule } from './proxy/proxy.module';
 
 @Module({
   imports: [
