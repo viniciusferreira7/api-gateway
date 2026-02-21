@@ -3,23 +3,23 @@ import { ClientOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { GatewayService } from '@/gateway/gateway.service';
 
+type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
+type Urls<T extends ServicesName> = ReturnType<
+  GatewayService['serviceConfig']
+>[T]['url'];
+
 @Injectable()
 export class GrpcConfigService {
-  constructor(private readonly gatewayService: GatewayService) {}
-
   public createOptions(
-    serviceName: keyof ReturnType<GatewayService['serviceConfig']>,
-    packageName: string,
-    protoFile: string
+    serviceName: ServicesName,
+    url: Urls<ServicesName>
   ): ClientOptions {
-    const service = this.gatewayService.serviceConfig[serviceName];
-
     return {
       transport: Transport.GRPC,
       options: {
-        package: packageName,
-        protoPath: join(__dirname, `../proto/${protoFile}`),
-        url: service.url,
+        package: serviceName,
+        protoPath: join(process.cwd(), 'src/proto', `${serviceName}.proto`),
+        url,
       },
     };
   }
