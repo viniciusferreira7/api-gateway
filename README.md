@@ -12,14 +12,15 @@ Client
   ▼
 API Gateway (REST/HTTP)
   │
-  ├── GatewayService   → resolves downstream service URLs and timeouts
-  ├── GrpcModule       → builds gRPC ClientOptions per service
-  └── ProxyService     → forwards requests to the correct microservice
-        │
-        ├── users-service    (gRPC)
-        ├── products-service (gRPC)
-        ├── checkout-service (gRPC)
-        └── payments-service (gRPC)
+  ├── GatewayService      → resolves downstream service URLs and timeouts
+  ├── GrpcConfigService   → builds gRPC ClientOptions per service
+  ├── GrpcClientFactory   → creates and caches gRPC clients (business + health)
+  └── ProxyService        → forwards requests to the correct microservice
+        │                   JWT and x-* headers forwarded as gRPC metadata
+        ├── users-service     (gRPC)
+        ├── products-service  (gRPC)
+        ├── checkouts-service (gRPC)
+        └── payments-service  (gRPC)
 ```
 
 ## Project Structure
@@ -28,8 +29,9 @@ API Gateway (REST/HTTP)
 src/
 ├── env/            # Environment validation (Zod schema)
 ├── gateway/        # Service URL and timeout configuration
-├── grpc/           # gRPC client factory (ClientOptions builder)
-├── proxy/          # Request forwarding to downstream services
+├── grpc/           # gRPC client factory and ClientOptions builder
+├── proto/          # Protobuf definitions (one per service + health.proto)
+├── proxy/          # Request forwarding and health check
 ├── app.module.ts
 └── main.ts
 ```
