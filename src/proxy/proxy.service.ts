@@ -10,6 +10,14 @@ type GrpcStub = Record<
   (data: unknown, metadata: Metadata) => Observable<unknown>
 >;
 
+interface HealthCheckResponse {
+  status: 'UNKNOWN' | 'SERVING' | 'NOT_SERVING' | 'SERVICE_UNKNOWN';
+}
+
+type HealthStub = {
+  check: (data: { service: string }) => Observable<HealthCheckResponse>;
+};
+
 @Injectable()
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
@@ -61,5 +69,22 @@ export class ProxyService {
     }
   }
 
-  public async serviceHealth() {}
+  public async getServiceHealth(serviceName: ServicesName) {
+    try {
+      const serviceConfig = this.gatewayService.serviceConfig();
+      const service = serviceConfig[serviceName];
+
+      const healthClient = this.grpcClientFactory.getHealthClient(
+        serviceName,
+        service.url
+      );
+
+      const stub = healthClient.getService<HealthStub>('Health');
+      const response = await firstValueFrom(stub.check({ service: serviceName }));
+
+      return { status: response.status === 'SERVING' ? 'healthy' : 'unhealthy' };
+    } catch (error) {
+      return { status: 'unhealthy', error: error.message };
+    }
+  }
 }
