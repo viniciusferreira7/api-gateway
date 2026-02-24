@@ -23,4 +23,15 @@ export class GrpcConfigService {
       },
     };
   }
+
+  public createHealthOptions(url: string): ClientOptions {
+    return {
+      transport: Transport.GRPC,
+      options: {
+        package: 'grpc.health.v1',
+        protoPath: join(process.cwd(), 'src/proto', 'health.proto'),
+        url,
+      },
+    };
+  }
 }

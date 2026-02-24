@@ -8,6 +8,7 @@ type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 @Injectable()
 export class GrpcClientFactory {
   private readonly clients = new Map<string, ClientGrpc>();
+  private readonly healthClients = new Map<string, ClientGrpc>();
 
   constructor(private readonly grpcConfig: GrpcConfigService) {}
 
@@ -21,5 +22,17 @@ export class GrpcClientFactory {
 
     // biome-ignore lint/style/noNonNullAssertion: Its using Hashmap
     return this.clients.get(serviceName)!;
+  }
+
+  getHealthClient(serviceName: ServicesName, url: string): ClientGrpc {
+    if (!this.healthClients.has(serviceName)) {
+      const client = ClientProxyFactory.create(
+        this.grpcConfig.createHealthOptions(url)
+      ) as unknown as ClientGrpc;
+      this.healthClients.set(serviceName, client);
+    }
+
+    // biome-ignore lint/style/noNonNullAssertion: Its using Hashmap
+    return this.healthClients.get(serviceName)!;
   }
 }
