@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ClientProxy, ClientProxyFactory } from '@nestjs/microservices';
+import { ClientGrpc, ClientProxyFactory } from '@nestjs/microservices';
 import type { GatewayService } from '@/gateway/gateway.service';
 import { GrpcConfigService } from './grpc.service';
 
@@ -7,15 +7,15 @@ type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
 @Injectable()
 export class GrpcClientFactory {
-  private readonly clients = new Map<string, ClientProxy>();
+  private readonly clients = new Map<string, ClientGrpc>();
 
   constructor(private readonly grpcConfig: GrpcConfigService) {}
 
-  getClient(serviceName: ServicesName, url: string): ClientProxy {
+  getClient(serviceName: ServicesName, url: string): ClientGrpc {
     if (!this.clients.has(serviceName)) {
       const client = ClientProxyFactory.create(
         this.grpcConfig.createOptions(serviceName, url)
-      );
+      ) as unknown as ClientGrpc;
       this.clients.set(serviceName, client);
     }
 
