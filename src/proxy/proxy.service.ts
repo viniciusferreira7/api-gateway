@@ -1,11 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { Metadata } from '@grpc/grpc-js';
+import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom, Observable } from 'rxjs';
 import type { GatewayService } from '@/gateway/gateway.service';
 import { GrpcClientFactory } from '@/grpc/grpc.factory';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
-type GrpcStub = Record<string, (data: unknown, metadata: Metadata) => Observable<unknown>>;
+type GrpcStub = Record<
+  string,
+  (data: unknown, metadata: Metadata) => Observable<unknown>
+>;
 
 @Injectable()
 export class ProxyService {
@@ -30,24 +33,22 @@ export class ProxyService {
 
     const payload = {
       ...body,
-      ...(userInfo && {
-        userId: userInfo.id,
-        userEmail: userInfo.email,
-        userRole: userInfo.role,
-      }),
     };
 
     const metadata = new Metadata();
     if (headers) {
-      for (const [key, value] of Object.entries(headers)) {
-        if (key === 'authorization' || key.startsWith('x-')) {
-          metadata.add(key, value as string);
-        }
-      }
+      metadata.add('authorization', headers.authorization as string);
+
+      if (userInfo?.id) metadata.add('x-user-id', userInfo?.id);
+      if (userInfo?.id) metadata.add('x-user-email', userInfo.email);
+      if (userInfo?.id) metadata.add('x-user-role', userInfo?.role);
     }
 
     try {
-      const grpcClient = this.grpcClientFactory.getClient(serviceName, service.url);
+      const grpcClient = this.grpcClientFactory.getClient(
+        serviceName,
+        service.url
+      );
       const grpcServiceName = `${serviceName[0].toUpperCase()}${serviceName.slice(1)}Service`;
       const stub = grpcClient.getService<GrpcStub>(grpcServiceName);
       return await firstValueFrom(stub[method](payload, metadata));
