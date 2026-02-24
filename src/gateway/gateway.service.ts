@@ -16,7 +16,7 @@ export class GatewayService {
         url: this.configService.get('PRODUCTS_SERVICE_URL', { infer: true }),
         timeout: 10_000,
       },
-      checkout: {
+      checkouts: {
         url: this.configService.get('CHECKOUT_SERVICE_URL', { infer: true }),
         timeout: 10_000,
       },
