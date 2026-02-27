@@ -8,6 +8,7 @@ import { EnvModule } from './env/env.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { GrpcModule } from './grpc/grpc.module';
 import { ProxyModule } from './proxy/proxy.module';
+import { MiddlewareModule } from './middleware/middleware.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ProxyModule } from './proxy/proxy.module';
     ConfigModule,
     GatewayModule,
     GrpcModule,
+    MiddlewareModule,
   ],
   controllers: [AppController],
   providers: [AppService],
