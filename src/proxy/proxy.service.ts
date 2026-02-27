@@ -1,7 +1,7 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom, Observable } from 'rxjs';
-import type { GatewayService } from '@/gateway/gateway.service';
+import { GatewayService } from '@/gateway/gateway.service';
 import { GrpcClientFactory } from '@/grpc/grpc.factory';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
@@ -80,9 +80,13 @@ export class ProxyService {
       );
 
       const stub = healthClient.getService<HealthStub>('Health');
-      const response = await firstValueFrom(stub.check({ service: serviceName }));
+      const response = await firstValueFrom(
+        stub.check({ service: serviceName })
+      );
 
-      return { status: response.status === 'SERVING' ? 'healthy' : 'unhealthy' };
+      return {
+        status: response.status === 'SERVING' ? 'healthy' : 'unhealthy',
+      };
     } catch (error) {
       return { status: 'unhealthy', error: error.message };
     }

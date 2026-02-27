@@ -1,12 +1,33 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { ProxyService } from './proxy/proxy.service';
 
-@Controller()
+@Controller('api')
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly proxyService: ProxyService) {}
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @Get('/health')
+  async getHealth() {
+    const [users, checkouts, products, payments] = await Promise.all([
+      this.proxyService.getServiceHealth('users'),
+      this.proxyService.getServiceHealth('checkouts'),
+      this.proxyService.getServiceHealth('products'),
+      this.proxyService.getServiceHealth('payments'),
+    ]);
+
+    const status =
+      !users.error && !checkouts.error && !products.error && !payments.error
+        ? 'ok'
+        : 'error';
+
+    return {
+      status,
+      timestamp: new Date().toISOString(),
+      users,
+      checkouts,
+      products,
+      payments,
+    };
   }
+
+  //TODO: 18:40
 }
