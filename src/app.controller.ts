@@ -5,7 +5,15 @@ import { ProxyService } from './proxy/proxy.service';
 export class AppController {
   constructor(private readonly proxyService: ProxyService) {}
 
-  @Get('/health')
+  @Get('/readyz')
+  async getReady() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('/healthz')
   async getHealth() {
     const [users, checkouts, products, payments] = await Promise.all([
       this.proxyService.getServiceHealth('users'),
