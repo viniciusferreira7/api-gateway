@@ -1,4 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ProxyService } from './proxy/proxy.service';
 
 @Controller('api')
@@ -6,6 +12,7 @@ export class AppController {
   constructor(private readonly proxyService: ProxyService) {}
 
   @Get('/readyz')
+  @HttpCode(HttpStatus.OK)
   async getReady() {
     return {
       status: 'ok',
@@ -14,6 +21,7 @@ export class AppController {
   }
 
   @Get('/healthz')
+  @HttpCode(HttpStatus.OK)
   async getHealth() {
     const [users, checkouts, products, payments] = await Promise.all([
       this.proxyService.getServiceHealth('users'),
@@ -27,6 +35,17 @@ export class AppController {
         ? 'ok'
         : 'error';
 
+    if (status === 'error') {
+      return new ServiceUnavailableException({
+        status,
+        timestamp: new Date().toISOString(),
+        users,
+        checkouts,
+        products,
+        payments,
+      });
+    }
+
     return {
       status,
       timestamp: new Date().toISOString(),
@@ -36,6 +55,4 @@ export class AppController {
       payments,
     };
   }
-
-  //TODO: 18:40
 }
