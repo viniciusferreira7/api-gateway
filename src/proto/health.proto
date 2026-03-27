@@ -2,22 +2,31 @@ syntax = "proto3";
 
 package grpc.health.v1;
 
+// Request message for a health check.
 message HealthCheckRequest {
+  // The name of the service to check. Use empty string for overall server health.
   string service = 1;
 }
 
+// Response message for a health check.
 message HealthCheckResponse {
+  // ServingStatus indicates the health state of a service.
   enum ServingStatus {
+    // Health state is unknown.
     UNKNOWN = 0;
+    // The service is healthy and serving requests.
     SERVING = 1;
+    // The service is not serving requests.
     NOT_SERVING = 2;
+    // The requested service is unknown to the server.
     SERVICE_UNKNOWN = 3;
   }
+  // The current serving status of the service.
   ServingStatus status = 1;
 }
 
-// Health provides a standard gRPC health check protocol for service readiness.
-service Health {
+// HealthService provides a standard gRPC health check protocol for service readiness.
+service HealthService {
   // Check reports the health status of the specified service.
   rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
 }
