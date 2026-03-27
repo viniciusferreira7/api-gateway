@@ -34,9 +34,6 @@ export class ProxyService {
     headers?: Record<string, unknown>,
     userInfo?: { id: string; email: string; role: string }
   ) {
-    const serviceConfig = this.gatewayService.serviceConfig();
-    const service = serviceConfig[serviceName];
-
     this.logger.log(`Proxying gRPC call to ${serviceName}/${method}`);
 
     const payload = {
@@ -53,10 +50,7 @@ export class ProxyService {
     }
 
     try {
-      const grpcClient = this.grpcClientFactory.getClient(
-        serviceName,
-        service.url
-      );
+      const grpcClient = this.grpcClientFactory.getClient(serviceName);
       const grpcServiceName = `${serviceName[0].toUpperCase()}${serviceName.slice(1)}Service`;
       const stub = grpcClient.getService<GrpcStub>(grpcServiceName);
       return await firstValueFrom(stub[method](payload, metadata));
