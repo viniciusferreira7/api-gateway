@@ -6,6 +6,13 @@ import { GrpcConfigService } from './grpc.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
+type ServiceGrpcNameMap = {
+  users: 'UsersService';
+  products: 'ProductsService';
+  checkouts: 'CheckoutsService';
+  payments: 'PaymentsService';
+};
+
 @Injectable()
 export class GrpcClientFactory {
   private readonly clients = new Map<string, ClientGrpc>();
@@ -29,7 +36,10 @@ export class GrpcClientFactory {
     return this.clients.get(serviceName)!;
   }
 
-  getService<T extends object>(serviceName: ServicesName, grpcServiceName: string): T {
+  getService<T extends object, S extends ServicesName>(
+    serviceName: S,
+    grpcServiceName: ServiceGrpcNameMap[S]
+  ): T {
     const client = this.getClient(serviceName);
     const service = client.getService<T>(grpcServiceName);
     const { timeout } = this.gatewayService.serviceConfig()[serviceName];
@@ -40,6 +50,7 @@ export class GrpcClientFactory {
         if (typeof method !== 'function') return method;
         return (request: unknown, metadata?: Metadata) => {
           const deadline = new Date(Date.now() + timeout);
+          // biome-ignore lint/complexity/noBannedTypes: This is using function
           return (method as Function).call(
             target,
             request,
