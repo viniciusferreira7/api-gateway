@@ -70,5 +70,30 @@ export class AuthService {
       throw new UnauthorizedException('Invalid login credentials');
     }
   }
-  async register() {}
+  async register(registerDto: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<{ access_token: string }> {
+    try {
+      const userService = this.gRpcFactory.getService<
+        UsersServiceClient,
+        'users'
+      >('users', 'UsersService');
+
+      const result = await firstValueFrom(
+        userService.register({
+          email: registerDto.email,
+          password: registerDto.password,
+          first_name: registerDto.firstName,
+          last_name: registerDto.lastName,
+        })
+      );
+
+      return result;
+    } catch (_err) {
+      throw new UnauthorizedException('Registration failed');
+    }
+  }
 }
