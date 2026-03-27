@@ -2,24 +2,54 @@ syntax = "proto3";
 
 package users;
 
-service UsersService {
-  rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
-}
-
+// Request message for session validation.
 message ValidateSessionRequest {
+  // The session token to validate.
   string token = 1;
 }
 
+// Response message for session validation.
 message ValidateSessionResponse {
+  // Whether the session token is valid.
   bool valid = 1;
+  // The authenticated user data, present when valid is true.
   optional UserData user = 2;
 }
 
+// User data returned as part of a validated session.
 message UserData {
+  // Unique identifier of the user.
   string id = 1;
+  // Email address of the user.
   string email = 2;
+  // First name of the user.
   string first_name = 3;
+  // Last name of the user.
   string last_name = 4;
+  // Role assigned to the user.
   string role = 5;
+  // Current status of the user account.
   string status = 6;
+}
+
+// Request message for user login.
+message LoginRequest {
+  // The user's email address.
+  string email = 1;
+  // The user's password.
+  string password = 2;
+}
+
+// Response message for user login.
+message LoginResponse {
+  // The JWT access token issued upon successful login.
+  string access_token = 1;
+}
+
+// UsersService handles user-related operations such as session validation.
+service UsersService {
+  // ValidateSession checks whether a session token is valid and returns the associated user.
+  rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
+  // Login authenticates a user with email and password and returns an access token.
+  rpc Login(LoginRequest) returns (LoginResponse);
 }
