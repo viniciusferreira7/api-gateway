@@ -7,4 +7,10 @@ export interface UsersServiceClient {
     email: string;
     password: string;
   }): Observable<{ access_token: string }>;
+  register(request: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+  }): Observable<{ access_token: string }>;
 }

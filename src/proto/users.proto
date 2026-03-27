@@ -46,10 +46,30 @@ message LoginResponse {
   string access_token = 1;
 }
 
+// Request message for user registration.
+message RegisterRequest {
+  // The user's email address.
+  string email = 1;
+  // The user's password.
+  string password = 2;
+  // The user's first name.
+  string first_name = 3;
+  // The user's last name.
+  string last_name = 4;
+}
+
+// Response message for user registration.
+message RegisterResponse {
+  // The JWT access token issued upon successful registration.
+  string access_token = 1;
+}
+
 // UsersService handles user-related operations such as session validation.
 service UsersService {
   // ValidateSession checks whether a session token is valid and returns the associated user.
   rpc ValidateSession (ValidateSessionRequest) returns (ValidateSessionResponse);
   // Login authenticates a user with email and password and returns an access token.
   rpc Login(LoginRequest) returns (LoginResponse);
+  // Register creates a new user account and returns an access token.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
 }
