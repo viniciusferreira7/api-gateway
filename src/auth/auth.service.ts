@@ -22,10 +22,10 @@ export class AuthService {
 
   async validateSessionToken(sessionToken: string): Promise<UserSession> {
     try {
-      const usersService = this.gRpcFactory.getService<UsersServiceClient>(
-        'users',
-        'UsersService'
-      );
+      const usersService = this.gRpcFactory.getService<
+        UsersServiceClient,
+        'users'
+      >('users', 'UsersService');
 
       const { valid, user } = await firstValueFrom(
         usersService.validateSession({ token: sessionToken })
@@ -48,6 +48,27 @@ export class AuthService {
       throw new UnauthorizedException('Invalid session token');
     }
   }
-  async login() {}
+  async login(loginDto: {
+    email: string;
+    password: string;
+  }): Promise<{ access_token: string }> {
+    try {
+      const userService = this.gRpcFactory.getService<
+        UsersServiceClient,
+        'users'
+      >('users', 'UsersService');
+
+      const result = await firstValueFrom(
+        userService.login({
+          email: loginDto.email,
+          password: loginDto.password,
+        })
+      );
+
+      return result;
+    } catch (_err) {
+      throw new UnauthorizedException('Invalid login credentials');
+    }
+  }
   async register() {}
 }
