@@ -50,9 +50,12 @@ export class ProxyService {
     }
 
     try {
-      const grpcClient = this.grpcClientFactory.getClient(serviceName);
       const grpcServiceName = `${serviceName[0].toUpperCase()}${serviceName.slice(1)}Service`;
-      const stub = grpcClient.getService<GrpcStub>(grpcServiceName);
+      const stub = this.grpcClientFactory.getService<GrpcStub, ServicesName>(
+        serviceName,
+        // biome-ignore lint/suspicious/noExplicitAny: Its a proxy service
+        grpcServiceName as any
+      );
       return await firstValueFrom(stub[method](payload, metadata));
     } catch (error) {
       this.logger.error(
