@@ -1,7 +1,9 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import { ClientGrpc, ClientProxyFactory } from '@nestjs/microservices';
+import { from, firstValueFrom } from 'rxjs';
 import { GatewayService } from '@/gateway/gateway.service';
+import { CircuitBreakerService } from './circuit-breaker.service';
 import { GrpcConfigService } from './grpc.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
@@ -20,7 +22,8 @@ export class GrpcClientFactory {
 
   constructor(
     private readonly grpcConfig: GrpcConfigService,
-    private readonly gatewayService: GatewayService
+    private readonly gatewayService: GatewayService,
+    private readonly circuitBreakerService: CircuitBreakerService
   ) {}
 
   getClient(serviceName: ServicesName): ClientGrpc {
@@ -44,19 +47,25 @@ export class GrpcClientFactory {
     const service = client.getService<T>(grpcServiceName);
     const { timeout } = this.gatewayService.serviceConfig()[serviceName];
 
+    const breaker = this.circuitBreakerService.getBreaker(serviceName);
+
     return new Proxy(service, {
-      get(target, prop) {
+      get: (target, prop) => {
         const method = target[prop as keyof T];
         if (typeof method !== 'function') return method;
         return (request: unknown, metadata?: Metadata) => {
           const deadline = new Date(Date.now() + timeout);
-          // biome-ignore lint/complexity/noBannedTypes: This is using function
-          return (method as Function).call(
-            target,
-            request,
-            metadata ?? new Metadata(),
-            { deadline }
-          );
+          const call = () =>
+            firstValueFrom(
+              // biome-ignore lint/complexity/noBannedTypes: This is using function
+              (method as Function).call(
+                target,
+                request,
+                metadata ?? new Metadata(),
+                { deadline }
+              )
+            );
+          return from(breaker.fire(call));
         };
       },
     }) as T;
