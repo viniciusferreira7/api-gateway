@@ -18,7 +18,7 @@ export type UserPayload = z.infer<typeof tokenPayloadSchema>;
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly authService: AuthService,
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Cannot use this before calling super
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Cannot use "this" before calling super
     private readonly env: EnvService
   ) {
     const jwtSecret = env.get('JWT_SECRET');

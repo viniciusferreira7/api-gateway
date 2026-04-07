@@ -5,6 +5,7 @@ import { EnvModule } from '@/env/env.module';
 import { EnvService } from '@/env/env.service';
 import { GrpcModule } from '@/grpc/grpc.module';
 import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
 
 @Module({
   imports: [
@@ -20,5 +21,6 @@ import { AuthService } from './auth.service';
     }),
   ],
   providers: [AuthService],
+  controllers: [AuthController],
 })
 export class AuthModule {}

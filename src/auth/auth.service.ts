@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
+import type { LoginDto } from '@/dto/login-dto';
+import type { RegisterDto } from '@/dto/register-dto';
 import { GrpcClientFactory } from '@/grpc/grpc.factory';
 import type { UsersServiceClient } from '@/interfaces/gRpc/user-service';
 import type { UserSession } from '@/interfaces/user-session';
@@ -48,10 +50,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid session token');
     }
   }
-  async login(loginDto: {
-    email: string;
-    password: string;
-  }): Promise<{ access_token: string }> {
+  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
     try {
       const userService = this.gRpcFactory.getService<
         UsersServiceClient,
@@ -70,12 +69,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid login credentials');
     }
   }
-  async register(registerDto: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }): Promise<{ access_token: string }> {
+  async register(registerDto: RegisterDto): Promise<{ access_token: string }> {
     try {
       const userService = this.gRpcFactory.getService<
         UsersServiceClient,
