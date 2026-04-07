@@ -18,7 +18,9 @@ export class AuthController {
   @Post('/login')
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: AuthResponseDto })
-  @ApiBadRequestResponse({ description: 'Validation error (invalid email or password too short)' })
+  @ApiBadRequestResponse({
+    description: 'Validation error (invalid email or password too short)',
+  })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
     const response = await this.authService.login(loginDto);
@@ -28,9 +30,11 @@ export class AuthController {
   }
 
   @Post('/register')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   @ApiOkResponse({ type: AuthResponseDto })
-  @ApiBadRequestResponse({ description: 'Validation error (invalid email, password or name too short)' })
+  @ApiBadRequestResponse({
+    description: 'Validation error (invalid email, password or name too short)',
+  })
   @ApiUnauthorizedResponse({ description: 'Registration failed' })
   async register(@Body() registerDto: RegisterDto) {
     const response = await this.authService.register(registerDto);
