@@ -5,8 +5,10 @@ import {
   HttpStatus,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ProxyService } from './proxy/proxy.service';
 
+@ApiTags('Health')
 @Controller('api')
 export class AppController {
   constructor(private readonly proxyService: ProxyService) {}
