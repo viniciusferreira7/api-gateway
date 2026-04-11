@@ -11,7 +11,7 @@ import {
   ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { ProxyService } from './proxy/proxy.service';
+import { ProxyService } from './proxy/services/proxy.service';
 
 @ApiTags('Health')
 @Controller('api')

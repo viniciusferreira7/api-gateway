@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { GatewayModule } from '@/gateway/gateway.module';
 import { GrpcModule } from '@/grpc/grpc.module';
-import { ProxyService } from './proxy.service';
+import { ProxyService } from './services/proxy.service';
 
 @Module({
   imports: [GrpcModule, GatewayModule],

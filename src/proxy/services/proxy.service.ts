@@ -1,8 +1,8 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom, Observable } from 'rxjs';
-import { GatewayService } from '@/gateway/gateway.service';
-import { GrpcClientFactory } from '@/grpc/grpc.factory';
+import { GatewayService } from '@/gateway/services/gateway.service';
+import { GrpcClientFactory } from '@/grpc/factories/grpc.factory';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 type GrpcStub = Record<
