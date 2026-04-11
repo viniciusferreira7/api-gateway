@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { GatewayModule } from '@/gateway/gateway.module';
-import { CircuitBreakerService } from './circuit-breaker.service';
-import { GrpcClientFactory } from './grpc.factory';
-import { GrpcConfigService } from './grpc.service';
+import { CircuitBreakerService } from './services/circuit-breaker.service';
+import { GrpcClientFactory } from './factories/grpc.factory';
+import { GrpcConfigService } from './services/grpc.service';
 
 @Module({
   imports: [GatewayModule],

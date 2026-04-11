@@ -2,9 +2,9 @@ import { Metadata } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import { ClientGrpc, ClientProxyFactory } from '@nestjs/microservices';
 import { from, firstValueFrom } from 'rxjs';
-import { GatewayService } from '@/gateway/gateway.service';
-import { CircuitBreakerService } from './circuit-breaker.service';
-import { GrpcConfigService } from './grpc.service';
+import { GatewayService } from '@/gateway/services/gateway.service';
+import { CircuitBreakerService } from '../services/circuit-breaker.service';
+import { GrpcConfigService } from '../services/grpc.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 

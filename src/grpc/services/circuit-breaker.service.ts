@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import CircuitBreaker from 'opossum';
-import { GatewayService } from '@/gateway/gateway.service';
+import { GatewayService } from '@/gateway/services/gateway.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
