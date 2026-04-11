@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import z from 'zod';
 import type { EnvService } from '@/env/env.service';
-import { AuthService } from './auth.service';
+import { AuthService } from '../services/auth.service';
 
 const tokenPayloadSchema = z.object({
   token: z.string(),
