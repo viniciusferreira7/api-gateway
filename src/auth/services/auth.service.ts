@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { firstValueFrom } from 'rxjs';
-import type { LoginDto } from '../dto/login-dto';
-import type { RegisterDto } from '../dto/register-dto';
 import { GrpcClientFactory } from '@/grpc/factories/grpc.factory';
 import type { UsersServiceClient } from '@/interfaces/gRpc/user-service';
 import type { UserSession } from '@/interfaces/user-session';
+import type { LoginDto } from '../dtos/login-dto';
+import type { RegisterDto } from '../dtos/register-dto';
 
 @Injectable()
 export class AuthService {
