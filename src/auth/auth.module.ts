@@ -4,8 +4,8 @@ import { PassportModule } from '@nestjs/passport';
 import { EnvModule } from '@/env/env.module';
 import { EnvService } from '@/env/env.service';
 import { GrpcModule } from '@/grpc/grpc.module';
-import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';
+import { AuthService } from './services/auth.service';
 
 @Module({
   imports: [

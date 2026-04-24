@@ -1,6 +1,6 @@
+import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { ClientOptions, Transport } from '@nestjs/microservices';
-import { join } from 'path';
 import { GatewayService } from '@/gateway/services/gateway.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;

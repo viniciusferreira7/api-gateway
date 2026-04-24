@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { envSchema } from './env/env';
 import { EnvModule } from './env/env.module';
 import { GatewayModule } from './gateway/gateway.module';
@@ -14,7 +15,6 @@ import { GrpcModule } from './grpc/grpc.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
 import { ProxyModule } from './proxy/proxy.module';
-import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [

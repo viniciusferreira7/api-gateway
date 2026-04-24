@@ -1,7 +1,7 @@
 import { Metadata } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import { ClientGrpc, ClientProxyFactory } from '@nestjs/microservices';
-import { from, firstValueFrom } from 'rxjs';
+import { firstValueFrom, from } from 'rxjs';
 import { GatewayService } from '@/gateway/services/gateway.service';
 import { CircuitBreakerService } from '../services/circuit-breaker.service';
 import { GrpcConfigService } from '../services/grpc.service';
