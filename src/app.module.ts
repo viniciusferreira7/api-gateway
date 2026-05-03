@@ -10,6 +10,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { envSchema } from './env/env';
 import { EnvModule } from './env/env.module';
+import { EnvService } from './env/env.service';
 import { GatewayModule } from './gateway/gateway.module';
 import { GrpcModule } from './grpc/grpc.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
@@ -25,23 +26,26 @@ import { ProxyModule } from './proxy/proxy.module';
         return envSchema.parse(env);
       },
     }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 1000, // 1 second
-        limit: 10, // 10 requests per minute
-      },
-      {
-        name: 'medium',
-        ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute
-      },
-      {
-        name: 'long',
-        ttl: 900000, // 15 minute
-        limit: 1000, // 1000 requests per minute
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      inject: [EnvService],
+      useFactory: (envService: EnvService) => [
+        {
+          name: 'short',
+          ttl: Number(envService.get('RATE_TTL_SHORT') ?? 1000),
+          limit: Number(envService.get('RATE_LIMIT_SHORT') ?? 10),
+        },
+        {
+          name: 'medium',
+          ttl: Number(envService.get('RATE_TTL_MEDIUM') ?? 60000),
+          limit: Number(envService.get('RATE_LIMIT_MEDIUM') ?? 100),
+        },
+        {
+          name: 'long',
+          ttl: Number(envService.get('RATE_TTL_LONG') ?? 900000),
+          limit: Number(envService.get('RATE_LIMIT_LONG') ?? 1000),
+        },
+      ],
+    }),
     EnvModule,
     ProxyModule,
     ConfigModule,
