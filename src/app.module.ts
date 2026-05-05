@@ -27,24 +27,25 @@ import { ProxyModule } from './proxy/proxy.module';
       },
     }),
     ThrottlerModule.forRootAsync({
-      inject: [EnvService],
+      imports: [EnvService],
       useFactory: (envService: EnvService) => [
         {
           name: 'short',
-          ttl: Number(envService.get('RATE_TTL_SHORT') ?? 1000),
+          ttl: Number(envService.get('RATE_TTL_SHORT') ?? 1_000),
           limit: Number(envService.get('RATE_LIMIT_SHORT') ?? 10),
         },
         {
           name: 'medium',
-          ttl: Number(envService.get('RATE_TTL_MEDIUM') ?? 60000),
+          ttl: Number(envService.get('RATE_TTL_MEDIUM') ?? 60_000),
           limit: Number(envService.get('RATE_LIMIT_MEDIUM') ?? 100),
         },
         {
           name: 'long',
-          ttl: Number(envService.get('RATE_TTL_LONG') ?? 900000),
-          limit: Number(envService.get('RATE_LIMIT_LONG') ?? 1000),
+          ttl: Number(envService.get('RATE_TTL_LONG') ?? 900_000),
+          limit: Number(envService.get('RATE_LIMIT_LONG') ?? 1_000),
         },
       ],
+      inject: [EnvService],
     }),
     EnvModule,
     ProxyModule,
