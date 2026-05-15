@@ -14,7 +14,7 @@ import {
 import { ProxyService } from './proxy/services/proxy.service';
 
 @ApiTags('Health')
-@Controller('api')
+@Controller()
 export class AppController {
   constructor(private readonly proxyService: ProxyService) {}
 

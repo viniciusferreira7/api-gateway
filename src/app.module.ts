@@ -29,7 +29,6 @@ import { ProxyModule } from './proxy/proxy.module';
       },
     }),
     ThrottlerModule.forRootAsync({
-      imports: [EnvService],
       useFactory: (envService: EnvService) => [
         {
           name: 'short',

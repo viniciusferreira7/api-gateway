@@ -13,7 +13,7 @@ import { RegisterDto } from '../dtos/register-dto';
 import { AuthService } from '../services/auth.service';
 
 @ApiTags('Authentication')
-@Controller('api/auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

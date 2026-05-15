@@ -8,6 +8,8 @@ import { EnvService } from './env/env.service';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   const envService = app.get(EnvService);
 
   const port = envService.get('PORT');
@@ -66,11 +68,55 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Marketplace API Gateway')
-    .setDescription('API Gateway for marketplace')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+    .setDescription(
+      `
+          API Gateway for the Marketplace system with microservices
 
+          Available Services:
+          - Users Service: Authentication and user management
+          - Products Service: Product catalog and management
+          - Checkout Service: Cart and order processing
+          - Payments Service: Payment processing
+
+          Authentication:
+          - Use JWT Bearer token for protected routes
+          - Use Session token for session validation
+      `
+    )
+    .setVersion('1.0')
+    .setContact(
+      'Marketplace Team',
+      '<https://marketplace.com>',
+      'dev@marketplace.com'
+    )
+    .setLicense('MIT', '<https://opensource.org/licenses/MIT>')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'JWT-auth'
+    )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-session-token',
+        in: 'header',
+        description: 'Session token for user validation',
+      },
+      'session-auth'
+    )
+    .addTag('Authentication', 'Authentication and authorization endpoints')
+    .addTag('Users', 'User management endpoints')
+    .addTag('Products', 'Product catalog endpoints')
+    .addTag('Checkout', 'Cart and order endpoints')
+    .addTag('Payments', 'Payment processing endpoints')
+    .addTag('Health', 'Health monitoring endpoints')
+    .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
