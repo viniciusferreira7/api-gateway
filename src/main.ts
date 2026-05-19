@@ -118,11 +118,11 @@ async function bootstrap() {
     .addTag('Health', 'Health monitoring endpoints')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
   await app.listen(port);
 
   console.log(`🚀 API Gateway running on port ${port}`);
-  console.log(`📚 Swagger documentation: <http://localhost:${port}/api>`);
+  console.log(`📚 Swagger documentation: <http://localhost:${port}/api/docs>`);
 }
 bootstrap();
