@@ -1,23 +1,48 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'user@example.com' })
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'User email address used for authentication',
+  })
   @IsEmail()
-  email: string;
+  public readonly email: string;
 
-  @ApiProperty({ example: '123456', minLength: 6 })
+  @ApiProperty({
+    example: '123456',
+    minLength: 6,
+    description: 'User password with a minimum length of 6 characters',
+  })
   @IsString()
   @MinLength(6)
-  password: string;
+  public readonly password: string;
 
-  @ApiProperty({ example: 'John', minLength: 2 })
+  @ApiProperty({
+    example: 'John',
+    minLength: 2,
+    description: 'User first name',
+  })
   @IsString()
   @MinLength(2)
-  firstName: string;
+  public readonly firstName: string;
 
-  @ApiProperty({ example: 'Doe', minLength: 2 })
+  @ApiProperty({
+    example: 'Doe',
+    minLength: 2,
+    description: 'User last name',
+  })
   @IsString()
   @MinLength(2)
-  lastName: string;
+  public readonly lastName: string;
+
+  @ApiPropertyOptional({
+    example: 'user',
+    enum: ['user', 'admin', 'seller'],
+    required: false,
+    description: 'User role in the system',
+  })
+  @IsOptional()
+  @IsString()
+  public readonly role?: string;
 }
