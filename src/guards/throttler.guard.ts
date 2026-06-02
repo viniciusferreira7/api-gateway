@@ -7,6 +7,7 @@ import {
 
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
+  // biome-ignore lint/suspicious/noExplicitAny: Its using any because getRequestResponse return Record<string, any>
   protected async getTracker(req: Record<string, any>): Promise<string> {
     return `${req.ip}-${req.headers['user-agent']}`;
   }
