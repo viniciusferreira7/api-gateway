@@ -69,7 +69,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid login credentials');
     }
   }
-  async register(registerDto: RegisterDto): Promise<{ access_token: string }> {
+  async register(registerDto: RegisterDto): Promise<{ user_id: string }> {
     try {
       const userService = this.gRpcFactory.getService<
         UsersServiceClient,

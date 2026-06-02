@@ -43,7 +43,7 @@ message LoginRequest {
 // Response message for user login.
 message LoginResponse {
   // The JWT access token issued upon successful login.
-  string access_token = 1;
+  string user_id = 1;
 }
 
 // Request message for user registration.

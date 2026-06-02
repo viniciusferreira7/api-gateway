@@ -12,5 +12,5 @@ export interface UsersServiceClient {
     password: string;
     first_name: string;
     last_name: string;
-  }): Observable<{ access_token: string }>;
+  }): Observable<{ user_id: string }>;
 }
