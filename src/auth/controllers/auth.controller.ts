@@ -44,8 +44,8 @@ export class AuthController {
   @Throttle({ short: { limit: 3, ttl: 60_000 } })
   async register(@Body() registerDto: RegisterDto) {
     const response = await this.authService.register(registerDto);
-    const accessToken = new AuthResponseDto(response.access_token);
+    const userId = new AuthResponseDto(response.user_id);
 
-    return accessToken;
+    return userId;
   }
 }
