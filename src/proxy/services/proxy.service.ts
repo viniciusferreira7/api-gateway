@@ -1,65 +1,46 @@
-import { Metadata } from '@grpc/grpc-js';
 import { Injectable, Logger } from '@nestjs/common';
-import { firstValueFrom, Observable } from 'rxjs';
 import { GatewayService } from '@/gateway/services/gateway.service';
-import { GrpcClientFactory } from '@/grpc/factories/grpc.factory';
+import {
+  HttpClientService,
+  type HttpRequestOptions,
+} from '@/http/services/http-client.service';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
-type GrpcStub = Record<
-  string,
-  (data: unknown, metadata: Metadata) => Observable<unknown>
->;
-
-interface HealthCheckResponse {
-  status: 'UNKNOWN' | 'SERVING' | 'NOT_SERVING' | 'SERVICE_UNKNOWN';
-}
-
-type HealthStub = {
-  check: (data: { service: string }) => Observable<HealthCheckResponse>;
-};
 
 @Injectable()
 export class ProxyService {
   private readonly logger = new Logger(ProxyService.name);
 
-  constructor(
-    private readonly grpcClientFactory: GrpcClientFactory,
-    private readonly gatewayService: GatewayService
-  ) {}
+  constructor(private readonly httpClient: HttpClientService) {}
 
   public async proxyRequest(
     serviceName: ServicesName,
-    method: string,
-    body?: Record<string, unknown>,
-    headers?: Record<string, unknown>,
+    options: HttpRequestOptions,
     userInfo?: { id: string; email: string; role: string }
   ) {
-    this.logger.log(`Proxying gRPC call to ${serviceName}/${method}`);
+    this.logger.log(`Proxying HTTP call to ${serviceName} ${options.path}`);
 
-    const payload = {
-      ...body,
-    };
-
-    const metadata = new Metadata();
-    if (headers) {
-      metadata.add('authorization', headers.authorization as string);
-
-      if (userInfo?.id) metadata.add('x-user-id', userInfo?.id);
-      if (userInfo?.id) metadata.add('x-user-email', userInfo.email);
-      if (userInfo?.id) metadata.add('x-user-role', userInfo?.role);
+    // Allowlist forwarded headers. Never trust client-supplied identity
+    // headers: the gateway is the only authority for x-user-* and always
+    // derives them from the authenticated userInfo.
+    const headers: Record<string, string> = {};
+    if (options.headers?.authorization) {
+      headers.authorization = options.headers.authorization;
+    }
+    if (userInfo?.id) {
+      headers['x-user-id'] = userInfo.id;
+      headers['x-user-email'] = userInfo.email;
+      headers['x-user-role'] = userInfo.role;
     }
 
     try {
-      const grpcServiceName = `${serviceName[0].toUpperCase()}${serviceName.slice(1)}Service`;
-      const stub = this.grpcClientFactory.getService<GrpcStub, ServicesName>(
-        serviceName,
-        // biome-ignore lint/suspicious/noExplicitAny: Its a proxy service
-        grpcServiceName as any
-      );
-      return await firstValueFrom(stub[method](payload, metadata));
+      return await this.httpClient.request(serviceName, {
+        ...options,
+        headers,
+      });
     } catch (error) {
       this.logger.error(
-        `Error proxying gRPC call to ${serviceName}/${method}`,
+        `Error proxying HTTP call to ${serviceName} ${options.path}`,
         error
       );
       throw error;
@@ -68,24 +49,17 @@ export class ProxyService {
 
   public async getServiceHealth(serviceName: ServicesName) {
     try {
-      const serviceConfig = this.gatewayService.serviceConfig();
-      const service = serviceConfig[serviceName];
+      await this.httpClient.request(serviceName, {
+        method: 'GET',
+        path: '/healthz',
+      });
 
-      const healthClient = this.grpcClientFactory.getHealthClient(
-        serviceName,
-        service.url
-      );
-
-      const stub = healthClient.getService<HealthStub>('Health');
-      const response = await firstValueFrom(
-        stub.check({ service: serviceName })
-      );
-
-      return {
-        status: response.status === 'SERVING' ? 'healthy' : 'unhealthy',
-      };
+      return { status: 'healthy' };
     } catch (error) {
-      return { status: 'unhealthy', error: error.message };
+      return {
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'unknown error',
+      };
     }
   }
 }

@@ -10,7 +10,7 @@ export interface UserSession {
   } | null;
 }
 
-export interface UserSessionGPpc {
+export interface ValidateSessionResponse {
   valid: boolean;
   user: {
     id: string;

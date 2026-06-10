@@ -11,10 +11,10 @@ export const envSchema = z.object({
 
   JWT_SECRET: z.string().min(1),
 
-  USERS_SERVICE_URL: z.string().min(1),
-  PRODUCTS_SERVICE_URL: z.string().min(1),
-  CHECKOUT_SERVICE_URL: z.string().min(1),
-  PAYMENTS_SERVICE_URL: z.string().min(1),
+  USERS_SERVICE_URL: z.url(),
+  PRODUCTS_SERVICE_URL: z.url(),
+  CHECKOUT_SERVICE_URL: z.url(),
+  PAYMENTS_SERVICE_URL: z.url(),
 
   CORS_ORIGIN: z.union([
     z.literal('*'),
