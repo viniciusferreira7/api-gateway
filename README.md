@@ -2,9 +2,9 @@
 
 > ⚠️ **Work In Progress** - This project is currently under active development.
 
-Central entry point for the Marketplace microservices architecture. Routes HTTP requests to downstream gRPC services, handling cross-cutting concerns like authentication, authorization, rate limiting, CORS, request validation, and resilience (circuit breaking).
+Central entry point for the Marketplace microservices architecture. Routes HTTP requests to downstream HTTP services, handling cross-cutting concerns like authentication, authorization, rate limiting, CORS, request validation, and resilience (circuit breaking).
 
-Built with [NestJS](https://nestjs.com/) 11, gRPC, and Zod-validated configuration.
+Built with [NestJS](https://nestjs.com/) 11, [undici](https://undici.nodejs.org/) for downstream HTTP, and Zod-validated configuration.
 
 ## Features
 
@@ -30,14 +30,14 @@ API Gateway (REST/HTTP, global prefix /api)
   ├── AuthModule       → login / register, JWT issuing, session validation
   │
   ├── GatewayService          → resolves downstream service URLs and timeouts
-  ├── GrpcService / Factory   → builds, creates and caches gRPC clients (business + health)
-  ├── CircuitBreakerService   → wraps gRPC calls with per-service circuit breakers
+  ├── HttpClientService       → undici-based HTTP client for downstream calls (business + health)
+  ├── CircuitBreakerService   → wraps HTTP calls with per-service circuit breakers
   └── ProxyService            → forwards requests to the correct microservice
-        │                       JWT and x-* headers forwarded as gRPC metadata
-        ├── users-service     (gRPC)
-        ├── products-service  (gRPC)
-        ├── checkouts-service (gRPC)
-        └── payments-service  (gRPC)
+        │                       JWT and x-* headers forwarded as HTTP headers
+        ├── users-service     (HTTP)
+        ├── products-service  (HTTP)
+        ├── checkouts-service (HTTP)
+        └── payments-service  (HTTP)
 ```
 
 ## Project Structure
@@ -52,11 +52,10 @@ src/
 │   └── strategies/ # jwt.strategy
 ├── env/            # Environment validation (Zod schema) + EnvService
 ├── gateway/        # Service URL and timeout configuration
-├── grpc/           # gRPC client factory, ClientOptions builder, circuit breaker
-│   ├── factories/
-│   └── services/   # grpc.service, circuit-breaker.service
+├── http/           # undici HTTP client and circuit breaker
+│   └── services/   # http-client.service, circuit-breaker.service
 ├── guards/         # jwt-auth, session, role, throttler guards
-├── interfaces/     # Shared TS types (gRPC contracts, user session)
+├── interfaces/     # Shared TS types (user session)
 ├── middleware/     # Logging middleware
 ├── proxy/          # Request forwarding and health check
 ├── app.module.ts
@@ -72,10 +71,10 @@ Copy `.env.example` to `.env` and fill in the values. All variables are validate
 | `PORT`                 | HTTP port (default: `3333`)                       | No       |
 | `NODE_ENV`             | `dev` \| `test` \| `production` (default: `dev`)  | No       |
 | `JWT_SECRET`           | Secret for JWT signing/verification               | Yes      |
-| `USERS_SERVICE_URL`    | gRPC URL for the users service                    | Yes      |
-| `PRODUCTS_SERVICE_URL` | gRPC URL for the products service                 | Yes      |
-| `CHECKOUT_SERVICE_URL` | gRPC URL for the checkout service                 | Yes      |
-| `PAYMENTS_SERVICE_URL` | gRPC URL for the payments service                 | Yes      |
+| `USERS_SERVICE_URL`    | HTTP URL for the users service                    | Yes      |
+| `PRODUCTS_SERVICE_URL` | HTTP URL for the products service                 | Yes      |
+| `CHECKOUT_SERVICE_URL` | HTTP URL for the checkout service                 | Yes      |
+| `PAYMENTS_SERVICE_URL` | HTTP URL for the payments service                 | Yes      |
 | `CORS_ORIGIN`          | `*` or comma-separated list of allowed origins    | Yes      |
 | `RATE_TTL_SHORT`       | Window (ms) for the `short` rate-limit tier       | Yes      |
 | `RATE_LIMIT_SHORT`     | Max requests per window for the `short` tier      | Yes      |
