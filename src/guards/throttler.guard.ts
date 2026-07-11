@@ -26,7 +26,7 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     const tracker = await this.getTracker(req);
     const key = generateKey(context, tracker, throttlerName);
 
-    const totalHits = await this.storageService.increment(
+    const { totalHits } = await this.storageService.increment(
       key,
       ttl,
       limit,
@@ -34,13 +34,13 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
       throttlerName
     );
 
-    if (Number(totalHits) > limit) {
+    if (totalHits > limit) {
       res.setHeader('Retry-After', Math.round(ttl / 1000));
       throw new ThrottlerException();
     }
 
     res.setHeader(`${this.headerPrefix}-Limit`, limit);
-    res.setHeader(`${this.headerPrefix}-Remaining`, limit - Number(totalHits));
+    res.setHeader(`${this.headerPrefix}-Remaining`, limit - totalHits);
     res.setHeader(`${this.headerPrefix}-Reset`, Math.round(ttl / 1000));
 
     return true;
