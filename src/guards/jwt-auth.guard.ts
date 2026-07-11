@@ -31,7 +31,7 @@ export class JwtAuthGuard extends JwtGuard {
   }
 
   public handleRequest<Error, User, Info>(err: Error, user: User, _info: Info) {
-    if (err || user) {
+    if (err || !user) {
       throw err || new UnauthorizedException();
     }
 
