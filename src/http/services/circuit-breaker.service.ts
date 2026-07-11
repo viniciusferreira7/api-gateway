@@ -14,19 +14,15 @@ export class CircuitBreakerService {
     CircuitBreaker<Parameters<BreakerAction>, unknown>
   >();
 
-  constructor(private readonly gatewayService: GatewayService) {}
-
   getBreaker(
     serviceName: ServicesName
   ): CircuitBreaker<Parameters<BreakerAction>, unknown> {
     if (!this.breakers.has(serviceName)) {
-      const { timeout } = this.gatewayService.serviceConfig()[serviceName];
-
       const breaker = new CircuitBreaker<Parameters<BreakerAction>, unknown>(
         (fn: () => Promise<unknown>) => fn(),
         {
           name: serviceName,
-          timeout,
+          timeout: false,
           errorThresholdPercentage: 50,
           resetTimeout: 30_000,
           volumeThreshold: 5,
