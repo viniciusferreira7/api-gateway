@@ -11,7 +11,7 @@ Built with [NestJS](https://nestjs.com/) 11, [undici](https://undici.nodejs.org/
 - **Authentication** — JWT Bearer auth (Passport `passport-jwt`) and session-token validation against the users service.
 - **Authorization** — role-based access via a `@Roles()` decorator + `RoleGuard`; opt-out of auth with `@Public()`.
 - **Rate limiting** — three configurable tiers (`short` / `medium` / `long`) via `@nestjs/throttler`, applied globally.
-- **Resilience** — per-service circuit breakers (`opossum`) with timeout, error-threshold, and reset handling.
+- **Resilience** — per-service circuit breakers (`opossum`) with error-threshold, volume-threshold, and reset handling, plus automatic retries with exponential backoff and full jitter for idempotent downstream calls.
 - **Security hardening** — `helmet` (CSP, HSTS), strict CORS allowlist with credentials, and a global `ValidationPipe` (`whitelist` + `forbidNonWhitelisted`).
 - **Observability** — request logging middleware applied to all routes.
 - **Config validation** — all environment variables validated at startup with a Zod schema; the app fails fast on misconfiguration.
@@ -31,6 +31,7 @@ API Gateway (REST/HTTP, global prefix /api)
   │
   ├── GatewayService          → resolves downstream service URLs and timeouts
   ├── HttpClientService       → undici-based HTTP client for downstream calls (business + health)
+  ├── RetryService            → retries idempotent calls with exponential backoff + jitter
   ├── CircuitBreakerService   → wraps HTTP calls with per-service circuit breakers
   └── ProxyService            → forwards requests to the correct microservice
         │                       JWT and x-* headers forwarded as HTTP headers
@@ -52,8 +53,8 @@ src/
 │   └── strategies/ # jwt.strategy
 ├── env/            # Environment validation (Zod schema) + EnvService
 ├── gateway/        # Service URL and timeout configuration
-├── http/           # undici HTTP client and circuit breaker
-│   └── services/   # http-client.service, circuit-breaker.service
+├── http/           # undici HTTP client, retry, and circuit breaker
+│   └── services/   # http-client.service, retry.service, circuit-breaker.service
 ├── guards/         # jwt-auth, session, role, throttler guards
 ├── interfaces/     # Shared TS types (user session)
 ├── middleware/     # Logging middleware
@@ -84,6 +85,15 @@ Copy `.env.example` to `.env` and fill in the values. All variables are validate
 | `RATE_LIMIT_LONG`      | Max requests per window for the `long` tier       | Yes      |
 
 > Numeric values accept `_` separators (e.g. `60_000`).
+
+## Resilience
+
+Downstream calls go through a retry layer wrapped by a per-service circuit breaker.
+
+- **Retries** — only **idempotent** methods (`GET`, `PUT`, `DELETE`) are retried. Defaults: up to 5 attempts, 250 ms base delay, capped at 5 s per delay, within a 10 s total budget.
+- **Backoff + jitter** — delay is `min(base · 2^(n-1), cap)` with full jitter (`random · backoff`); a downstream `Retry-After` header (seconds or HTTP-date) raises the delay when larger.
+- **Retryable failures** — HTTP `429`, `502`, `503`, `504`, request timeouts/aborts, and transport-level errors (errors carrying a `code`). All other responses fail fast.
+- **Circuit breaker** — one breaker per downstream service: opens at a 50% error rate over a volume of 5+ calls and resets after 30 s (half-open probe). The breaker owns the timeout budget; per-call timeouts come from `AbortSignal.timeout` in the HTTP client, so the breaker's own timeout is disabled.
 
 ## Running
 
@@ -129,6 +139,21 @@ Two security schemes are configured:
 | `pnpm check:fix`   | Format and lint-fix with Biome       |
 | `pnpm check:type`  | Type-check with TypeScript           |
 | `pnpm format`      | Format with Prettier                 |
+| `pnpm test`        | Run the unit tests once              |
 | `pnpm test:watch`  | Run tests in watch mode              |
 | `pnpm test:cov`    | Run tests with coverage              |
-| `pnpm test:e2e`    | Run end-to-end tests                 |
+
+## Testing
+
+Unit tests run on [Vitest](https://vitest.dev/), configured in `vitest.config.ts` with `unplugin-swc` so NestJS decorator metadata is emitted. Specs live next to the code they cover as `*.spec.ts` files under `src/`.
+
+```bash
+# run once
+pnpm test
+
+# watch mode
+pnpm test:watch
+
+# with coverage
+pnpm test:cov
+```
