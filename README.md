@@ -139,21 +139,33 @@ Two security schemes are configured:
 | `pnpm check:fix`   | Format and lint-fix with Biome       |
 | `pnpm check:type`  | Type-check with TypeScript           |
 | `pnpm format`      | Format with Prettier                 |
-| `pnpm test`        | Run the unit tests once              |
-| `pnpm test:watch`  | Run tests in watch mode              |
-| `pnpm test:cov`    | Run tests with coverage              |
+| `pnpm test:unit`   | Run the unit tests once              |
+| `pnpm test:int`    | Run the integration tests once       |
+| `pnpm test:e2e`    | Run the end-to-end tests once        |
+| `pnpm test:watch`  | Run the unit tests in watch mode     |
+| `pnpm test:cov`    | Run the unit tests with coverage     |
 
 ## Testing
 
-Unit tests run on [Vitest](https://vitest.dev/), configured in `vitest.config.ts` with `unplugin-swc` so NestJS decorator metadata is emitted. Specs live next to the code they cover as `*.spec.ts` files under `src/`.
+Tests run on [Vitest](https://vitest.dev/) and are split into three lanes. All of them share `vitest.shared.ts`, which wires `unplugin-swc` so NestJS decorator metadata is emitted, and each lane adds only its include glob, parallelism and timeouts.
+
+| Lane        | Config                  | Files              | Scope                                                                       |
+|-------------|-------------------------|--------------------|-----------------------------------------------------------------------------|
+| Unit        | `vitest.config.ts`      | `src/**/*.spec.ts` | Pure and isolated, no application boot                                       |
+| Integration | `vitest.config.int.ts`  | `*.int-spec.ts`    | Modules wired through the DI container, below the gateway's HTTP boundary    |
+| E2E         | `vitest.config.e2e.ts`  | `*.e2e-spec.ts`    | Full application booted and driven over HTTP, under `test/`                  |
+
+The integration and e2e lanes run serially and load `test/setup-env.ts`, which fills throwaway defaults for every variable validated in `src/env/env.ts`. Values already present in `process.env` win, so a local `.env.test` (gitignored) or CI secrets override them.
 
 ```bash
-# run once
-pnpm test
+# run one lane
+pnpm test:unit
+pnpm test:int
+pnpm test:e2e
 
-# watch mode
+# watch mode (unit)
 pnpm test:watch
 
-# with coverage
+# with coverage (unit)
 pnpm test:cov
 ```
