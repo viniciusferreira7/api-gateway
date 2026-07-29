@@ -149,11 +149,11 @@ Two security schemes are configured:
 
 Tests run on [Vitest](https://vitest.dev/) and are split into three lanes. All of them share `vitest.shared.ts`, which wires `unplugin-swc` so NestJS decorator metadata is emitted, and each lane adds only its include glob, parallelism and timeouts.
 
-| Lane        | Config                  | Files             | Scope                                                                    |
-|-------------|-------------------------|-------------------|--------------------------------------------------------------------------|
-| Unit        | `vitest.config.ts`      | `*.unit-spec.ts`  | Pure and isolated, no application boot                                    |
-| Integration | `vitest.config.int.ts`  | `*.int-spec.ts`   | Modules wired through the DI container, below the gateway's HTTP boundary |
-| E2E         | `vitest.config.e2e.ts`  | `*.e2e-spec.ts`   | Full application booted and driven over HTTP, under `test/`               |
+| Lane        | Config                  | Files              | Scope                                                                    |
+|-------------|-------------------------|--------------------|--------------------------------------------------------------------------|
+| Unit        | `vitest.config.ts`      | `src/**/*.spec.ts` | Pure and isolated, no application boot                                    |
+| Integration | `vitest.config.int.ts`  | `*.int-spec.ts`    | Modules wired through the DI container, below the gateway's HTTP boundary |
+| E2E         | `vitest.config.e2e.ts`  | `*.e2e-spec.ts`    | Full application booted and driven over HTTP, under `test/`               |
 
 Unit and integration specs live next to the code they cover under `src/`; e2e specs live under `test/`.
 
