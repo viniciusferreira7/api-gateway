@@ -16,7 +16,9 @@
     "check": "biome check",
     "check:fix": "biome check --write",
     "check:type": "tsc --noEmit",
-    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:int": "vitest run --config ./vitest.config.int.ts",
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage"
   },
