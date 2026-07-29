@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { envSchema } from '@/env/env';
 import { HttpModule } from '@/http/http.module';
 import {
@@ -34,7 +35,9 @@ describe('HttpClientService (integration)', () => {
       response.end(body === undefined ? '' : JSON.stringify(body));
     });
 
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve)
+    );
 
     const { port } = server.address() as AddressInfo;
     process.env.USERS_SERVICE_URL = `http://127.0.0.1:${port}`;
