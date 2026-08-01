@@ -1,8 +1,12 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
+  ApiCreatedResponse,
   ApiOkResponse,
+  ApiServiceUnavailableResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -24,6 +28,10 @@ export class AuthController {
     description: 'Validation error (invalid email or password too short)',
   })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
+  @ApiServiceUnavailableResponse({
+    description: 'The users service is unreachable',
+  })
   @Public()
   @Throttle({ short: { limit: 5, ttl: 60_000 } })
   async login(@Body() loginDto: LoginDto) {
@@ -35,11 +43,15 @@ export class AuthController {
 
   @Post('/register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOkResponse({ type: AuthResponseDto })
+  @ApiCreatedResponse({ type: AuthResponseDto })
   @ApiBadRequestResponse({
     description: 'Validation error (invalid email, password or name too short)',
   })
-  @ApiUnauthorizedResponse({ description: 'Registration failed' })
+  @ApiConflictResponse({ description: 'Email is already registered' })
+  @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
+  @ApiServiceUnavailableResponse({
+    description: 'The users service is unreachable',
+  })
   @Public()
   @Throttle({ short: { limit: 3, ttl: 60_000 } })
   async register(@Body() registerDto: RegisterDto) {
