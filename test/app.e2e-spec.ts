@@ -4,6 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '@/app.module';
+import { AllExceptionsFilter } from '@/filters/all-exceptions.filter';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -15,6 +16,9 @@ describe('AppController (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
+    // Mirrors main.ts: without it the e2e lane never exercises the real error
+    // contract the application serves.
+    app.useGlobalFilters(new AllExceptionsFilter());
 
     await app.listen(0);
   });
@@ -35,6 +39,10 @@ describe('AppController (e2e)', () => {
     const response = await request(app.getHttpServer()).get('/api/unknown');
 
     expect(response.status).toBe(404);
+    expect(response.body).toMatchObject({
+      statusCode: 404,
+      path: '/api/unknown',
+    });
   });
 
   it('throttles a burst of requests', async () => {

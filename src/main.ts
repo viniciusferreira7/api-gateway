@@ -5,6 +5,7 @@ import { PinoLoggerService } from '@viniciusferreira7/signals/nest';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { EnvService } from './env/env.service';
+import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
 async function bootstrap() {
   // `bufferLogs` holds back everything Nest emits while the container is
@@ -71,6 +72,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const config = new DocumentBuilder()
     .setTitle('Marketplace API Gateway')
