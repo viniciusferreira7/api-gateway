@@ -1,4 +1,10 @@
 minimumReleaseAge: 10080
+
+# First-party packages are exempt: they are reviewed here, and the quarantine
+# would otherwise block every freshly published version for seven days.
+minimumReleaseAgeExclude:
+  - '@viniciusferreira7/*'
+
 saveExact: true
 engineStrict: true
 preferFrozenLockfile: true
@@ -9,3 +15,6 @@ allowBuilds:
   '@scarf/scarf': false
   '@swc/core': false
   unrs-resolver: false
+  # Pulled in by the OTLP proto exporters. Its postinstall only prints a
+  # version-scheme warning and emits no build output, so blocking it is safe.
+  protobufjs: false
