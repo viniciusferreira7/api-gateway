@@ -1,12 +1,18 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PinoLoggerService } from '@viniciusferreira7/signals/nest';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { EnvService } from './env/env.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `bufferLogs` holds back everything Nest emits while the container is
+  // starting, so those messages are replayed through the logger set below
+  // instead of being printed in the default format.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+
+  app.useLogger(app.get(PinoLoggerService));
 
   app.setGlobalPrefix('api');
 
@@ -130,7 +136,10 @@ async function bootstrap() {
 
   await app.listen(port);
 
-  console.log(`🚀 API Gateway running on port ${port}`);
-  console.log(`📚 Swagger documentation: <http://localhost:${port}/api/docs>`);
+  // Through the Nest logger rather than console.log, so these land in the
+  // structured stream the collector scrapes like every other record.
+  const logger = new Logger('Bootstrap');
+  logger.log(`API Gateway running on port ${port}`);
+  logger.log(`Swagger documentation: http://localhost:${port}/api/docs`);
 }
 bootstrap();

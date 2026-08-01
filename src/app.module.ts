@@ -6,6 +6,7 @@ import {
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ObservabilityModule } from '@viniciusferreira7/signals/nest';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -49,6 +50,7 @@ import { ProxyModule } from './proxy/proxy.module';
       inject: [EnvService],
     }),
     EnvModule,
+    ObservabilityModule.forRoot({ serviceName: 'api-gateway' }),
     ProxyModule,
     ConfigModule,
     GatewayModule,
