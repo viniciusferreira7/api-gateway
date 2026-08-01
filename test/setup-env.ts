@@ -21,6 +21,10 @@ const defaults: Record<string, string> = {
   RATE_LIMIT_MEDIUM: '100',
   RATE_TTL_LONG: '900_000',
   RATE_LIMIT_LONG: '1_000',
+  // `NODE_ENV=test` disables the signals SDK, so nothing is exported. These
+  // only exist to satisfy the Zod schema.
+  OTEL_SERVICE_NAME: 'api-gateway',
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
 };
 
 for (const [key, value] of Object.entries(defaults)) {

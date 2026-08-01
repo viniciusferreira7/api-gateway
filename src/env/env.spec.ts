@@ -14,6 +14,8 @@ const baseEnv = {
   RATE_LIMIT_MEDIUM: '20',
   RATE_TTL_LONG: '60000',
   RATE_LIMIT_LONG: '100',
+  OTEL_SERVICE_NAME: 'api-gateway',
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
 };
 
 describe('envSchema', () => {
