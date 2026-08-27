@@ -1,9 +1,9 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { PinoLoggerService } from '@viniciusferreira7/signals/nest';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { SWAGGER_PATH, setupSwagger } from './config/swagger.config';
 import { EnvService } from './env/env.service';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
@@ -75,67 +75,7 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const config = new DocumentBuilder()
-    .setTitle('Marketplace API Gateway')
-    .setDescription(
-      `
-          API Gateway for the Marketplace system with microservices
-
-          Available Services:
-          - Users Service: Authentication and user management
-          - Products Service: Product catalog and management
-          - Checkout Service: Cart and order processing
-          - Payments Service: Payment processing
-
-          Authentication:
-          - Use JWT Bearer token for protected routes
-          - Use Session token for session validation
-      `
-    )
-    .setVersion('1.0')
-    .setContact(
-      'Marketplace Team',
-      '<https://marketplace.com>',
-      'dev@marketplace.com'
-    )
-    .setLicense('MIT', '<https://opensource.org/licenses/MIT>')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        name: 'JWT',
-        description: 'Enter JWT token',
-        in: 'header',
-      },
-      'JWT-auth'
-    )
-    .addApiKey(
-      {
-        type: 'apiKey',
-        name: 'x-session-token',
-        in: 'header',
-        description: 'Session token for user validation',
-      },
-      'session-auth'
-    )
-    .addTag('Authentication', 'Authentication and authorization endpoints')
-    .addTag('Users', 'User management endpoints')
-    .addTag('Products', 'Product catalog endpoints')
-    .addTag('Checkout', 'Cart and order endpoints')
-    .addTag('Payments', 'Payment processing endpoints')
-    .addTag('Health', 'Health monitoring endpoints')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {},
-    customSiteTitle: 'Marketplace API Gateway Documentation',
-    customfavIcon: './favicon',
-    customCss: `
-      .swagger-ui .topbar { display: none }
-      .swagger-ui .info .title { color: #3b82f6 }
-    `,
-  });
+  setupSwagger(app);
 
   await app.listen(port);
 
@@ -143,6 +83,6 @@ async function bootstrap() {
   // structured stream the collector scrapes like every other record.
   const logger = new Logger('Bootstrap');
   logger.log(`API Gateway running on port ${port}`);
-  logger.log(`Swagger documentation: http://localhost:${port}/api/docs`);
+  logger.log(`Swagger documentation: http://localhost:${port}/${SWAGGER_PATH}`);
 }
 bootstrap();
