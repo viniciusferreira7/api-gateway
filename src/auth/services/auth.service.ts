@@ -19,7 +19,9 @@ import type {
 } from '@/interfaces/user-session';
 import { metrics } from '@/observability/metrics';
 import type { LoginDto } from '../dtos/login-dto';
+import type { LoginResponseDto } from '../dtos/login-response-dto';
 import type { RegisterDto } from '../dtos/register-dto';
+import type { UserResponseDto } from '../dtos/user-response-dto';
 
 type AuthOperation = 'login' | 'register' | 'validate_session' | 'validate_jwt';
 
@@ -180,21 +182,18 @@ export class AuthService {
     }
   }
 
-  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
+  async login(loginDto: LoginDto): Promise<LoginResponseDto> {
     const startedAt = Date.now();
 
     try {
-      const session = await this.httpClient.request<{ access_token: string }>(
-        'users',
-        {
-          method: 'POST',
-          path: '/auth/login',
-          body: {
-            email: loginDto.email,
-            password: loginDto.password,
-          },
-        }
-      );
+      const session = await this.httpClient.request<LoginResponseDto>('users', {
+        method: 'POST',
+        path: '/auth/login',
+        body: {
+          email: loginDto.email,
+          password: loginDto.password,
+        },
+      });
 
       this.settle('login', 'succeeded', startedAt);
 
@@ -208,23 +207,21 @@ export class AuthService {
     }
   }
 
-  async register(registerDto: RegisterDto): Promise<{ user_id: string }> {
+  async register(registerDto: RegisterDto): Promise<UserResponseDto> {
     const startedAt = Date.now();
 
     try {
-      const created = await this.httpClient.request<{ user_id: string }>(
-        'users',
-        {
-          method: 'POST',
-          path: '/auth/register',
-          body: {
-            email: registerDto.email,
-            password: registerDto.password,
-            first_name: registerDto.firstName,
-            last_name: registerDto.lastName,
-          },
-        }
-      );
+      const created = await this.httpClient.request<UserResponseDto>('users', {
+        method: 'POST',
+        path: '/auth/register',
+        body: {
+          email: registerDto.email,
+          password: registerDto.password,
+          firstName: registerDto.firstName,
+          lastName: registerDto.lastName,
+          role: registerDto.role,
+        },
+      });
 
       this.settle('register', 'succeeded', startedAt);
 

@@ -11,9 +11,10 @@ import {
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../decorators/public.decorator';
-import { AuthResponseDto } from '../dtos/auth-response-dto';
 import { LoginDto } from '../dtos/login-dto';
+import { LoginResponseDto } from '../dtos/login-response-dto';
 import { RegisterDto } from '../dtos/register-dto';
+import { UserResponseDto } from '../dtos/user-response-dto';
 import { AuthService } from '../services/auth.service';
 
 @ApiTags('Authentication')
@@ -23,7 +24,7 @@ export class AuthController {
 
   @Post('/login')
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AuthResponseDto })
+  @ApiOkResponse({ type: LoginResponseDto })
   @ApiBadRequestResponse({
     description: 'Validation error (invalid email or password too short)',
   })
@@ -34,18 +35,15 @@ export class AuthController {
   })
   @Public()
   @Throttle({ short: { limit: 5, ttl: 60_000 } })
-  async login(@Body() loginDto: LoginDto) {
-    const response = await this.authService.login(loginDto);
-    const accessToken = new AuthResponseDto(response.access_token);
-
-    return accessToken;
+  async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
+    return this.authService.login(loginDto);
   }
 
   @Post('/register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiCreatedResponse({ type: AuthResponseDto })
+  @ApiCreatedResponse({ type: UserResponseDto })
   @ApiBadRequestResponse({
-    description: 'Validation error (invalid email, password or name too short)',
+    description: 'Validation error (invalid email, password, name or role)',
   })
   @ApiConflictResponse({ description: 'Email is already registered' })
   @ApiTooManyRequestsResponse({ description: 'Rate limit exceeded' })
@@ -54,10 +52,7 @@ export class AuthController {
   })
   @Public()
   @Throttle({ short: { limit: 3, ttl: 60_000 } })
-  async register(@Body() registerDto: RegisterDto) {
-    const response = await this.authService.register(registerDto);
-    const userId = new AuthResponseDto(response.user_id);
-
-    return userId;
+  async register(@Body() registerDto: RegisterDto): Promise<UserResponseDto> {
+    return this.authService.register(registerDto);
   }
 }

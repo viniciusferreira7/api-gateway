@@ -98,12 +98,11 @@ describe('AuthService', () => {
   describe('login', () => {
     const credentials = { email: 'a@b.com', password: 'x' } as never;
 
-    it('returns the access_token from the downstream', async () => {
-      httpClient.request.mockResolvedValue({ access_token: 'jwt' });
+    it('returns the user and token from the downstream as they are', async () => {
+      const session = { user: { id: '1', email: 'a@b.com' }, token: 'jwt' };
+      httpClient.request.mockResolvedValue(session);
 
-      await expect(service.login(credentials)).resolves.toEqual({
-        access_token: 'jwt',
-      });
+      await expect(service.login(credentials)).resolves.toEqual(session);
     });
 
     it('throws UnauthorizedException when the credentials are rejected', async () => {
@@ -151,14 +150,14 @@ describe('AuthService', () => {
       password: 'x',
       firstName: 'Ana',
       lastName: 'Silva',
+      role: 'seller',
     } as never;
 
-    it('forwards the fields and returns the user_id', async () => {
-      httpClient.request.mockResolvedValue({ user_id: '1' });
+    it('forwards the fields in camelCase and returns the created user', async () => {
+      const created = { id: '1', email: 'a@b.com', role: 'seller' };
+      httpClient.request.mockResolvedValue(created);
 
-      await expect(service.register(payload)).resolves.toEqual({
-        user_id: '1',
-      });
+      await expect(service.register(payload)).resolves.toEqual(created);
 
       expect(httpClient.request).toHaveBeenCalledWith('users', {
         method: 'POST',
@@ -166,8 +165,9 @@ describe('AuthService', () => {
         body: {
           email: 'a@b.com',
           password: 'x',
-          first_name: 'Ana',
-          last_name: 'Silva',
+          firstName: 'Ana',
+          lastName: 'Silva',
+          role: 'seller',
         },
       });
     });
@@ -222,7 +222,7 @@ describe('AuthService', () => {
     });
 
     it('counts a successful login once, by operation and outcome', async () => {
-      httpClient.request.mockResolvedValue({ access_token: 'jwt' });
+      httpClient.request.mockResolvedValue({ user: {}, token: 'jwt' });
 
       await service.login(credentials);
 
