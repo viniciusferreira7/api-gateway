@@ -31,6 +31,54 @@ describe('RetryService', () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
+  it('calls onRetry once per retry, with the attempt that failed', async () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn();
+    let calls = 0;
+    const fn = vi.fn(async () => {
+      calls += 1;
+      if (calls < 3) {
+        throw new Error('boom');
+      }
+      return 'ok';
+    });
+
+    const promise = service.run(fn, { isRetryable: () => true, onRetry });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await promise;
+
+    expect(onRetry).toHaveBeenCalledTimes(2);
+    expect(onRetry.mock.calls.map(([attempt]) => attempt)).toEqual([1, 2]);
+  });
+
+  it('does not call onRetry when the error is not retryable', async () => {
+    const onRetry = vi.fn();
+    const fn = vi.fn(async () => {
+      throw new Error('bad request');
+    });
+
+    await expect(
+      service.run(fn, { isRetryable: () => false, onRetry })
+    ).rejects.toThrow('bad request');
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
+  // The hook marks a retry that happens, not one that was considered: a delay
+  // that blows the budget ends the call instead.
+  it('does not call onRetry when the delay would exceed the budget', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const onRetry = vi.fn();
+    const fn = vi.fn(async () => {
+      throw new Error('boom');
+    });
+
+    await expect(
+      service.run(fn, { isRetryable: () => true, budgetMs: 0, onRetry })
+    ).rejects.toThrow('boom');
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
   it('não retenta quando o erro não é retryable', async () => {
     const error = new Error('bad request');
     const fn = vi.fn(async () => {

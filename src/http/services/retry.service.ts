@@ -7,6 +7,13 @@ export interface RetryOptions {
   budgetMs?: number;
   isRetryable: (error: unknown) => boolean;
   retryAfterMs?: (error: unknown) => number | undefined;
+  /**
+   * Called once per retry, after the decision is final — the error is
+   * retryable, an attempt is left and the delay fits the budget. The caller
+   * owns what it means, which is what keeps this service free of the service
+   * name a metric attribute needs.
+   */
+  onRetry?: (attempt: number, error: unknown) => void;
 }
 
 const DEFAULTS = {
@@ -26,6 +33,7 @@ export class RetryService {
       budgetMs = DEFAULTS.budgetMs,
       isRetryable,
       retryAfterMs,
+      onRetry,
     } = options;
 
     const start = Date.now();
@@ -48,6 +56,8 @@ export class RetryService {
         if (Date.now() - start + delay > budgetMs) {
           throw error;
         }
+
+        onRetry?.(attempt, error);
 
         await this.sleep(delay);
       }
