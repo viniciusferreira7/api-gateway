@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import CircuitBreaker from 'opossum';
 import { GatewayService } from '@/gateway/services/gateway.service';
+import { metrics } from '@/observability/metrics';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
@@ -29,15 +30,27 @@ export class CircuitBreakerService {
         }
       );
 
-      breaker.on('open', () =>
-        this.logger.warn(`[${serviceName}] Circuit breaker OPEN`)
-      );
-      breaker.on('halfOpen', () =>
-        this.logger.log(`[${serviceName}] Circuit breaker HALF-OPEN`)
-      );
-      breaker.on('close', () =>
-        this.logger.log(`[${serviceName}] Circuit breaker CLOSED`)
-      );
+      breaker.on('open', () => {
+        metrics.circuit_breaker_transitions.add(1, {
+          service: serviceName,
+          state: 'open',
+        });
+        this.logger.warn(`[${serviceName}] Circuit breaker OPEN`);
+      });
+      breaker.on('halfOpen', () => {
+        metrics.circuit_breaker_transitions.add(1, {
+          service: serviceName,
+          state: 'half_open',
+        });
+        this.logger.log(`[${serviceName}] Circuit breaker HALF-OPEN`);
+      });
+      breaker.on('close', () => {
+        metrics.circuit_breaker_transitions.add(1, {
+          service: serviceName,
+          state: 'closed',
+        });
+        this.logger.log(`[${serviceName}] Circuit breaker CLOSED`);
+      });
 
       this.breakers.set(serviceName, breaker);
     }

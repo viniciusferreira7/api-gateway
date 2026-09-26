@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { metrics } from '@/observability/metrics';
 import { CircuitBreakerService } from './circuit-breaker.service';
 
 describe('CircuitBreakerService', () => {
@@ -25,5 +26,26 @@ describe('CircuitBreakerService', () => {
     const breaker = service.getBreaker('users');
 
     await expect(breaker.fire(async () => 'ok')).resolves.toBe('ok');
+  });
+
+  describe('metrics', () => {
+    it('counts a state change, by service and new state', () => {
+      const transitions = vi.spyOn(metrics.circuit_breaker_transitions, 'add');
+      const breaker = service.getBreaker('users');
+
+      breaker.open();
+      breaker.close();
+
+      expect(transitions).toHaveBeenCalledWith(1, {
+        service: 'users',
+        state: 'open',
+      });
+      expect(transitions).toHaveBeenCalledWith(1, {
+        service: 'users',
+        state: 'closed',
+      });
+
+      transitions.mockRestore();
+    });
   });
 });
