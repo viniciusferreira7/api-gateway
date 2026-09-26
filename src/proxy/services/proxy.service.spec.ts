@@ -1,4 +1,6 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HttpRequestError } from '@/http/services/http-client.service';
 import { ProxyService } from './proxy.service';
 
 describe('ProxyService', () => {
@@ -54,13 +56,24 @@ describe('ProxyService', () => {
       });
     });
 
-    it('propaga o erro do httpClient', async () => {
-      const error = new Error('down');
+    // Keeps the downstream status (a 404 stays a 404) for the exception filter.
+    it('propaga a resposta de erro do serviço como veio', async () => {
+      const error = new HttpRequestError(404, 'not found');
       httpClient.request.mockRejectedValue(error);
 
       await expect(
         service.proxyRequest('users' as never, { method: 'GET', path: '/me' })
       ).rejects.toBe(error);
+    });
+
+    // Timeout, conexão recusada ou breaker aberto: o serviço não respondeu,
+    // então é 503 — o mesmo status que a validação do token já devolve.
+    it('responde 503 quando a chamada nunca chega ao serviço', async () => {
+      httpClient.request.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      await expect(
+        service.proxyRequest('users' as never, { method: 'GET', path: '/me' })
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
     });
   });
 

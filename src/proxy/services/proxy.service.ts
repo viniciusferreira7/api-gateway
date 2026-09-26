@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { GatewayService } from '@/gateway/services/gateway.service';
 import {
   HttpClientService,
+  HttpRequestError,
   type HttpRequestOptions,
 } from '@/http/services/http-client.service';
 
@@ -43,7 +48,15 @@ export class ProxyService {
         `Error proxying HTTP call to ${serviceName} ${options.path}`,
         error
       );
-      throw error;
+
+      // A downstream answer keeps its status for the exception filter. Anything
+      // else — a timeout, a refused connection, an open breaker — never reached
+      // the service, which is a 503, not an unexplained 500.
+      if (error instanceof HttpRequestError) {
+        throw error;
+      }
+
+      throw new ServiceUnavailableException();
     }
   }
 
