@@ -73,6 +73,17 @@ describe('ProxyService', () => {
       );
     });
 
+    it('consulta o /health do serviço', async () => {
+      httpClient.request.mockResolvedValue(undefined);
+
+      await service.getServiceHealth('users' as never);
+
+      expect(httpClient.request).toHaveBeenCalledWith('users', {
+        method: 'GET',
+        path: '/health',
+      });
+    });
+
     it('retorna unhealthy com a mensagem de erro quando falha', async () => {
       httpClient.request.mockRejectedValue(new Error('timeout'));
 

@@ -51,7 +51,7 @@ export class ProxyService {
     try {
       await this.httpClient.request(serviceName, {
         method: 'GET',
-        path: '/healthz',
+        path: '/health',
       });
 
       return { status: 'healthy' };

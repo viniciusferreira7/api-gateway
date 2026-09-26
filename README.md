@@ -8,7 +8,7 @@ Built with [NestJS](https://nestjs.com/) 11, [undici](https://undici.nodejs.org/
 
 ## Features
 
-- **Authentication** — JWT Bearer auth (Passport `passport-jwt`) and session-token validation against the users service.
+- **Authentication** — JWT Bearer auth validated by the users service (`GET /auth/validate-token`) on every protected route.
 - **Authorization** — role-based access via a `@Roles()` decorator + `RoleGuard`; opt-out of auth with `@Public()`.
 - **Rate limiting** — three configurable tiers (`short` / `medium` / `long`) via `@nestjs/throttler`, applied globally.
 - **Resilience** — per-service circuit breakers (`opossum`) with error-threshold, volume-threshold, and reset handling, plus automatic retries with exponential backoff and full jitter for idempotent downstream calls.
@@ -123,8 +123,19 @@ Two security schemes are configured:
 
 | Method | Route                | Description                          | Rate limit       |
 |--------|----------------------|--------------------------------------|------------------|
-| `POST` | `/api/auth/login`    | Authenticate and receive a JWT       | 5 / 60s          |
-| `POST` | `/api/auth/register` | Create a user, returns the user id   | 3 / 60s          |
+| `POST` | `/api/auth/login`    | Authenticate; returns `{ user, token }` | 5 / 60s       |
+| `POST` | `/api/auth/register` | Create a buyer or seller; returns the user | 3 / 60s  |
+
+### Users endpoints
+
+All require `Authorization: Bearer <token>`; the gateway validates it against
+the users service before forwarding.
+
+| Method | Route                 | Description                        |
+|--------|-----------------------|------------------------------------|
+| `GET`  | `/api/users/profile`  | The logged-in account              |
+| `GET`  | `/api/users/sellers`  | Active sellers, without emails     |
+| `GET`  | `/api/users/:id`      | One user by UUID, without email    |
 
 ## Scripts
 
