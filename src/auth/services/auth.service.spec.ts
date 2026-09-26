@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpRequestError } from '@/http/services/http-client.service';
+import { metrics } from '@/observability/metrics';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -204,6 +205,101 @@ describe('AuthService', () => {
       await expect(service.register(payload)).rejects.toThrow(
         'Authentication service is unavailable'
       );
+    });
+  });
+
+  describe('metrics', () => {
+    const credentials = { email: 'a@b.com', password: 'x' } as never;
+    let operations: ReturnType<typeof vi.spyOn>;
+    let duration: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      // The instruments are OpenTelemetry no-ops until a meter provider is
+      // registered, which never happens under NODE_ENV=test — spying on them
+      // is enough to assert what the service reports.
+      operations = vi.spyOn(metrics.auth_operations, 'add');
+      duration = vi.spyOn(metrics.auth_operation_duration, 'record');
+    });
+
+    it('counts a successful login once, by operation and outcome', async () => {
+      httpClient.request.mockResolvedValue({ access_token: 'jwt' });
+
+      await service.login(credentials);
+
+      expect(operations).toHaveBeenCalledTimes(1);
+      expect(operations).toHaveBeenCalledWith(1, {
+        operation: 'login',
+        outcome: 'succeeded',
+      });
+      expect(duration).toHaveBeenCalledTimes(1);
+    });
+
+    // The split is the whole point: bad credentials and a users service outage
+    // must not look alike on a dashboard.
+    it('counts rejected credentials apart from an outage', async () => {
+      httpClient.request.mockRejectedValueOnce(
+        new HttpRequestError(401, 'nope')
+      );
+      await expect(service.login(credentials)).rejects.toThrow();
+
+      httpClient.request.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      await expect(service.login(credentials)).rejects.toThrow();
+
+      expect(operations).toHaveBeenCalledWith(1, {
+        operation: 'login',
+        outcome: 'rejected',
+      });
+      expect(operations).toHaveBeenCalledWith(1, {
+        operation: 'login',
+        outcome: 'unavailable',
+      });
+    });
+
+    it('counts a duplicate email as rejected, not as an outage', async () => {
+      httpClient.request.mockRejectedValue(new HttpRequestError(409, 'taken'));
+
+      await expect(
+        service.register({
+          email: 'a@b.com',
+          password: 'x',
+          firstName: 'Ana',
+          lastName: 'Silva',
+        } as never)
+      ).rejects.toThrow();
+
+      expect(operations).toHaveBeenCalledWith(1, {
+        operation: 'register',
+        outcome: 'rejected',
+      });
+    });
+
+    it('counts a rejected JWT without reaching the users service', async () => {
+      jwtService.verify.mockImplementation(() => {
+        throw new Error('bad');
+      });
+
+      await expect(service.validateJwtToken('token')).rejects.toThrow();
+
+      expect(operations).toHaveBeenCalledWith(1, {
+        operation: 'validate_jwt',
+        outcome: 'rejected',
+      });
+      expect(httpClient.request).not.toHaveBeenCalled();
+    });
+
+    it('carries no unbounded attribute into the counter', async () => {
+      httpClient.request.mockRejectedValue(new HttpRequestError(401, 'nope'));
+
+      await expect(service.login(credentials)).rejects.toThrow();
+
+      // An email or a user id as an attribute mints a time series per person;
+      // only closed sets belong here.
+      const [, attributes] = operations.mock.calls[0];
+
+      expect(Object.keys(attributes as object).sort()).toEqual([
+        'operation',
+        'outcome',
+      ]);
     });
   });
 });

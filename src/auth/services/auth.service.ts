@@ -17,8 +17,13 @@ import type {
   UserSession,
   ValidateSessionResponse,
 } from '@/interfaces/user-session';
+import { metrics } from '@/observability/metrics';
 import type { LoginDto } from '../dtos/login-dto';
 import type { RegisterDto } from '../dtos/register-dto';
+
+type AuthOperation = 'login' | 'register' | 'validate_session' | 'validate_jwt';
+
+type AuthOutcome = 'succeeded' | 'rejected' | 'unavailable';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +33,35 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly httpClient: HttpClientService
   ) {}
+
+  /**
+   * Records how one authentication operation ended.
+   *
+   * `rejected` is the caller's fault — bad credentials, a duplicate email — and
+   * `unavailable` is ours. Keeping them apart is what tells a brute force
+   * attempt from a users service outage on the dashboard; a single `failed`
+   * bucket would show the same spike for both.
+   *
+   * Attributes are a closed set. The email and the user id belong in the log
+   * line, where the trace_id already correlates them.
+   */
+  private settle(
+    operation: AuthOperation,
+    outcome: AuthOutcome,
+    startedAt: number
+  ): void {
+    metrics.auth_operations.add(1, { operation, outcome });
+    metrics.auth_operation_duration.record(Date.now() - startedAt, {
+      operation,
+      outcome,
+    });
+  }
+
+  private static outcomeOf(failure: HttpException): AuthOutcome {
+    return failure.getStatus() >= HttpStatus.INTERNAL_SERVER_ERROR
+      ? 'unavailable'
+      : 'rejected';
+  }
 
   /**
    * Translates a failed downstream call into the status the client should see.
@@ -90,14 +124,24 @@ export class AuthService {
   }
 
   async validateJwtToken(token: string): Promise<unknown> {
+    const startedAt = Date.now();
+
     try {
-      return this.jwtService.verify(token);
+      const payload = this.jwtService.verify(token);
+
+      this.settle('validate_jwt', 'succeeded', startedAt);
+
+      return payload;
     } catch (_err) {
+      this.settle('validate_jwt', 'rejected', startedAt);
+
       throw new UnauthorizedException('Invalid JWT token');
     }
   }
 
   async validateSessionToken(sessionToken: string): Promise<UserSession> {
+    const startedAt = Date.now();
+
     try {
       const { valid, user } =
         await this.httpClient.request<ValidateSessionResponse>('users', {
@@ -106,7 +150,7 @@ export class AuthService {
           body: { token: sessionToken },
         });
 
-      return {
+      const session: UserSession = {
         valid,
         user: user
           ? {
@@ -119,40 +163,78 @@ export class AuthService {
             }
           : null,
       };
+
+      this.settle('validate_session', 'succeeded', startedAt);
+
+      return session;
     } catch (err) {
-      throw this.upstreamFailure(err, 'Session validation');
+      const failure = this.upstreamFailure(err, 'Session validation');
+
+      this.settle(
+        'validate_session',
+        AuthService.outcomeOf(failure),
+        startedAt
+      );
+
+      throw failure;
     }
   }
 
   async login(loginDto: LoginDto): Promise<{ access_token: string }> {
+    const startedAt = Date.now();
+
     try {
-      return await this.httpClient.request<{ access_token: string }>('users', {
-        method: 'POST',
-        path: '/auth/login',
-        body: {
-          email: loginDto.email,
-          password: loginDto.password,
-        },
-      });
+      const session = await this.httpClient.request<{ access_token: string }>(
+        'users',
+        {
+          method: 'POST',
+          path: '/auth/login',
+          body: {
+            email: loginDto.email,
+            password: loginDto.password,
+          },
+        }
+      );
+
+      this.settle('login', 'succeeded', startedAt);
+
+      return session;
     } catch (err) {
-      throw this.upstreamFailure(err, 'Login');
+      const failure = this.upstreamFailure(err, 'Login');
+
+      this.settle('login', AuthService.outcomeOf(failure), startedAt);
+
+      throw failure;
     }
   }
 
   async register(registerDto: RegisterDto): Promise<{ user_id: string }> {
+    const startedAt = Date.now();
+
     try {
-      return await this.httpClient.request<{ user_id: string }>('users', {
-        method: 'POST',
-        path: '/auth/register',
-        body: {
-          email: registerDto.email,
-          password: registerDto.password,
-          first_name: registerDto.firstName,
-          last_name: registerDto.lastName,
-        },
-      });
+      const created = await this.httpClient.request<{ user_id: string }>(
+        'users',
+        {
+          method: 'POST',
+          path: '/auth/register',
+          body: {
+            email: registerDto.email,
+            password: registerDto.password,
+            first_name: registerDto.firstName,
+            last_name: registerDto.lastName,
+          },
+        }
+      );
+
+      this.settle('register', 'succeeded', startedAt);
+
+      return created;
     } catch (err) {
-      throw this.upstreamFailure(err, 'Registration');
+      const failure = this.upstreamFailure(err, 'Registration');
+
+      this.settle('register', AuthService.outcomeOf(failure), startedAt);
+
+      throw failure;
     }
   }
 }
