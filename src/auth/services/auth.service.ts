@@ -17,13 +17,19 @@ import type {
   UserSession,
   ValidateSessionResponse,
 } from '@/interfaces/user-session';
+import type { ValidatedToken } from '@/interfaces/validated-token';
 import { metrics } from '@/observability/metrics';
 import type { LoginDto } from '../dtos/login-dto';
 import type { LoginResponseDto } from '../dtos/login-response-dto';
 import type { RegisterDto } from '../dtos/register-dto';
 import type { UserResponseDto } from '../dtos/user-response-dto';
 
-type AuthOperation = 'login' | 'register' | 'validate_session' | 'validate_jwt';
+type AuthOperation =
+  | 'login'
+  | 'register'
+  | 'validate_session'
+  | 'validate_jwt'
+  | 'validate_token';
 
 type AuthOutcome = 'succeeded' | 'rejected' | 'unavailable';
 
@@ -138,6 +144,32 @@ export class AuthService {
       this.settle('validate_jwt', 'rejected', startedAt);
 
       throw new UnauthorizedException('Invalid JWT token');
+    }
+  }
+
+  /**
+   * Delegates the whole decision to the users service, which checks the JWT
+   * and that the account behind it still exists and is active.
+   */
+  async validateToken(authorization: string): Promise<ValidatedToken> {
+    const startedAt = Date.now();
+
+    try {
+      const validated = await this.httpClient.request<ValidatedToken>('users', {
+        method: 'GET',
+        path: '/auth/validate-token',
+        headers: { authorization },
+      });
+
+      this.settle('validate_token', 'succeeded', startedAt);
+
+      return validated;
+    } catch (err) {
+      const failure = this.upstreamFailure(err, 'Token validation');
+
+      this.settle('validate_token', AuthService.outcomeOf(failure), startedAt);
+
+      throw failure;
     }
   }
 

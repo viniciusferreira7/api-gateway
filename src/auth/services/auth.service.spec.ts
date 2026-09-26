@@ -95,6 +95,47 @@ describe('AuthService', () => {
     });
   });
 
+  describe('validateToken', () => {
+    it('asks the users service with the caller authorization header', async () => {
+      const validated = { userId: '1', email: 'a@b.com', role: 'seller' };
+      httpClient.request.mockResolvedValue(validated);
+
+      await expect(service.validateToken('Bearer t')).resolves.toEqual(
+        validated
+      );
+      expect(httpClient.request).toHaveBeenCalledWith('users', {
+        method: 'GET',
+        path: '/auth/validate-token',
+        headers: { authorization: 'Bearer t' },
+      });
+    });
+
+    it('throws UnauthorizedException when the users service refuses the token', async () => {
+      httpClient.request.mockRejectedValue(new HttpRequestError(401, 'nope'));
+
+      await expect(service.validateToken('Bearer t')).rejects.toBeInstanceOf(
+        UnauthorizedException
+      );
+    });
+
+    // An outage is not a bad token: the client should retry, not log in again.
+    it('throws ServiceUnavailableException when the users service is unreachable', async () => {
+      httpClient.request.mockRejectedValue(new Error('ECONNREFUSED'));
+
+      await expect(service.validateToken('Bearer t')).rejects.toBeInstanceOf(
+        ServiceUnavailableException
+      );
+    });
+
+    it('throws ServiceUnavailableException when the users service fails', async () => {
+      httpClient.request.mockRejectedValue(new HttpRequestError(503, 'down'));
+
+      await expect(service.validateToken('Bearer t')).rejects.toBeInstanceOf(
+        ServiceUnavailableException
+      );
+    });
+  });
+
   describe('login', () => {
     const credentials = { email: 'a@b.com', password: 'x' } as never;
 
