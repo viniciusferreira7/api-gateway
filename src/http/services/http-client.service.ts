@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { request } from 'undici';
 import { GatewayService } from '@/gateway/services/gateway.service';
+import { metrics } from '@/observability/metrics';
 import { CircuitBreakerService } from './circuit-breaker.service';
 import { RetryService } from './retry.service';
 
@@ -25,6 +26,13 @@ export class HttpRequestError extends Error {
     this.name = 'HttpRequestError';
   }
 }
+
+type UpstreamOutcome =
+  | 'succeeded'
+  | 'client_error'
+  | 'server_error'
+  | 'circuit_open'
+  | 'unreachable';
 
 const IDEMPOTENT_METHODS = new Set<HttpMethod>(['GET', 'PUT', 'DELETE']);
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
@@ -53,10 +61,64 @@ export class HttpClientService {
           this.retryService.run(dispatch, {
             isRetryable: HttpClientService.isRetryable,
             retryAfterMs: HttpClientService.retryAfterMs,
+            onRetry: () =>
+              metrics.upstream_retries.add(1, { service: serviceName }),
           })
       : dispatch;
 
-    return breaker.fire(call) as Promise<T>;
+    const startedAt = Date.now();
+
+    try {
+      const result = (await breaker.fire(call)) as T;
+
+      this.settle(serviceName, 'succeeded', startedAt);
+
+      return result;
+    } catch (error) {
+      this.settle(serviceName, HttpClientService.outcomeOf(error), startedAt);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Records how one downstream call ended. The duration covers retries and the
+   * breaker, because that is the latency the caller actually waited.
+   *
+   * Attributes are the service and a five-word outcome. The path is left out
+   * on purpose: `/orders/:id` arrives here already interpolated, so it would
+   * mint a time series per id.
+   */
+  private settle(
+    service: string,
+    outcome: UpstreamOutcome,
+    startedAt: number
+  ): void {
+    metrics.upstream_requests.add(1, { service, outcome });
+    metrics.upstream_request_duration.record(Date.now() - startedAt, {
+      service,
+      outcome,
+    });
+  }
+
+  /**
+   * Buckets a failure by who caused it. `circuit_open` is the breaker refusing
+   * to dial at all — opossum tags that rejection `EOPENBREAKER` — and it is
+   * worth its own bucket: it means this gateway shed the call, not that the
+   * downstream answered badly.
+   */
+  private static outcomeOf(error: unknown): UpstreamOutcome {
+    if (error instanceof HttpRequestError) {
+      return error.status >= HttpStatus.INTERNAL_SERVER_ERROR
+        ? 'server_error'
+        : 'client_error';
+    }
+
+    if ((error as { code?: unknown })?.code === 'EOPENBREAKER') {
+      return 'circuit_open';
+    }
+
+    return 'unreachable';
   }
 
   private async dispatch<T>(
