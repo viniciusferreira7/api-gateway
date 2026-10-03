@@ -18,10 +18,26 @@ describe('GatewayService', () => {
 
   it('monta a config de cada serviço a partir das URLs de ambiente', () => {
     expect(service.serviceConfig()).toEqual({
-      users: { url: 'http://users', timeout: 10_000 },
-      products: { url: 'http://products', timeout: 10_000 },
-      checkouts: { url: 'http://checkouts', timeout: 10_000 },
-      payments: { url: 'http://payments', timeout: 10_000 },
+      users: {
+        url: 'http://users',
+        timeout: 10_000,
+        forwardsClientErrors: true,
+      },
+      products: {
+        url: 'http://products',
+        timeout: 10_000,
+        forwardsClientErrors: false,
+      },
+      checkouts: {
+        url: 'http://checkouts',
+        timeout: 10_000,
+        forwardsClientErrors: false,
+      },
+      payments: {
+        url: 'http://payments',
+        timeout: 10_000,
+        forwardsClientErrors: false,
+      },
     });
   });
 

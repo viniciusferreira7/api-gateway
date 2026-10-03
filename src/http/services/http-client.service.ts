@@ -47,10 +47,12 @@ export class HttpClientService {
     serviceName: ServicesName,
     options: HttpRequestOptions
   ): Promise<T> {
-    const { url, timeout } = this.gatewayService.serviceConfig()[serviceName];
+    const { url, timeout, forwardsClientErrors } =
+      this.gatewayService.serviceConfig()[serviceName];
     const breaker = this.circuitBreakerService.getBreaker(serviceName);
 
-    const dispatch = () => this.dispatch<T>(url, timeout, options);
+    const dispatch = () =>
+      this.dispatch<T>(url, timeout, forwardsClientErrors, options);
 
     const call = IDEMPOTENT_METHODS.has(options.method)
       ? () =>
@@ -120,6 +122,7 @@ export class HttpClientService {
   private async dispatch<T>(
     baseUrl: string,
     timeout: number,
+    forwardsClientErrors: boolean,
     { method, path, body, headers }: HttpRequestOptions
   ): Promise<T> {
     const targetUrl = `${baseUrl}${path}`;
@@ -139,11 +142,12 @@ export class HttpClientService {
     });
 
     if (statusCode < 200 || statusCode >= 300) {
-      // Only a 4xx is read: it explains the caller's own mistake. A 5xx body
-      // may describe our internals and is discarded unread.
+      // Only a 4xx from a service that writes its 4xx text for end users is
+      // read: it explains the caller's own mistake. Any other body may
+      // describe internals and is discarded unread.
       let upstreamMessage: string | string[] | undefined;
 
-      if (statusCode >= 400 && statusCode < 500) {
+      if (forwardsClientErrors && statusCode >= 400 && statusCode < 500) {
         upstreamMessage = HttpClientService.messageOf(
           await responseBody.text()
         );

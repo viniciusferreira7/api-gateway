@@ -35,7 +35,16 @@ describe('HttpClientService', () => {
 
     const gatewayService = {
       serviceConfig: () => ({
-        users: { url: 'http://users', timeout: 10_000 },
+        users: {
+          url: 'http://users',
+          timeout: 10_000,
+          forwardsClientErrors: true,
+        },
+        products: {
+          url: 'http://products',
+          timeout: 10_000,
+          forwardsClientErrors: false,
+        },
       }),
     } as never;
 
@@ -185,6 +194,24 @@ describe('HttpClientService', () => {
 
       expect(error).toBeInstanceOf(HttpRequestError);
       expect((error as HttpRequestError).upstreamMessage).toBeUndefined();
+    });
+
+    // Deny by default: a service's 4xx text reaches the client only when that
+    // service is declared to write it for end users.
+    it('drops the 4xx message of a service that does not forward client errors', async () => {
+      const response = makeResponse(400, {
+        text: JSON.stringify({ message: 'duplicate key on products.sku' }),
+      });
+      requestMock.mockResolvedValueOnce(response);
+
+      const error = await service
+        .request('products' as never, { method: 'POST', path: '/x' })
+        .catch((rejection: unknown) => rejection);
+
+      expect(error).toMatchObject({ status: 400 });
+      expect((error as HttpRequestError).upstreamMessage).toBeUndefined();
+      expect(response.body.dump).toHaveBeenCalled();
+      expect(response.body.text).not.toHaveBeenCalled();
     });
 
     it('never reads the body of a 5xx', async () => {
