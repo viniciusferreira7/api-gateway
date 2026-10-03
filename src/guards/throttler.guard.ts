@@ -17,11 +17,15 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     limit,
     ttl,
     blockDuration,
+    throttler,
     generateKey,
   }: ThrottlerRequest): Promise<boolean> {
     const { req, res } = this.getRequestResponse(context);
 
-    const throttlerName = 'throttler';
+    // canActivate calls this once per named throttler (short, medium, long).
+    // Each needs its own counter: a shared name made every request count
+    // three times against whichever limit was smallest.
+    const throttlerName = throttler.name ?? 'default';
 
     const tracker = await this.getTracker(req);
     const key = generateKey(context, tracker, throttlerName);

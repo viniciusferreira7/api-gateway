@@ -1,6 +1,6 @@
 import type { ThrottlerRequest } from '@nestjs/throttler';
-import { ThrottlerException } from '@nestjs/throttler';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ThrottlerException, ThrottlerStorageService } from '@nestjs/throttler';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CustomThrottlerGuard } from './throttler.guard';
 
 interface MutableGuard {
@@ -35,6 +35,7 @@ describe('CustomThrottlerGuard', () => {
       limit: 5,
       ttl: 60_000,
       blockDuration: 60_000,
+      throttler: { name: 'short' },
       generateKey: vi.fn(() => 'key'),
     } as never;
   }
@@ -54,5 +55,61 @@ describe('CustomThrottlerGuard', () => {
       ThrottlerException
     );
     expect(res.setHeader).toHaveBeenCalledWith('Retry-After', 60);
+  });
+
+  describe('named throttlers', () => {
+    let storage: ThrottlerStorageService;
+
+    // What the app registers: three windows, each with its own counter.
+    const throttlers = [
+      { name: 'short', ttl: 1_000, limit: 10 },
+      { name: 'medium', ttl: 60_000, limit: 100 },
+      { name: 'long', ttl: 900_000, limit: 1_000 },
+    ];
+
+    beforeEach(() => {
+      storage = new ThrottlerStorageService();
+      guard.storageService = storage as never;
+    });
+
+    afterEach(() => {
+      storage.onApplicationShutdown();
+    });
+
+    /** One request, the way ThrottlerGuard.canActivate runs it: once per throttler. */
+    async function hit(limits: Partial<Record<string, number>> = {}) {
+      for (const throttler of throttlers) {
+        const limit = limits[throttler.name] ?? throttler.limit;
+
+        await guard.handleRequest({
+          context: {} as never,
+          limit,
+          ttl: throttler.ttl,
+          blockDuration: throttler.ttl,
+          throttler,
+          generateKey: (_context: unknown, tracker: string, name: string) =>
+            `${name}-${tracker}`,
+        } as never);
+      }
+    }
+
+    it('lets a request use exactly the limit of each window', async () => {
+      // `@Throttle({ short: { limit: 3 } })`, as on POST /auth/register.
+      for (let i = 0; i < 3; i++) {
+        await expect(hit({ short: 3 })).resolves.toBeUndefined();
+      }
+
+      await expect(hit({ short: 3 })).rejects.toBeInstanceOf(
+        ThrottlerException
+      );
+    });
+
+    it('counts each window apart', async () => {
+      await hit();
+
+      expect(
+        [...storage.storage.keys()].map((key) => key.split('-')[0]).sort()
+      ).toEqual(['long', 'medium', 'short']);
+    });
   });
 });
