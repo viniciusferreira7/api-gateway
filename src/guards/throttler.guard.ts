@@ -5,13 +5,14 @@ import {
   type ThrottlerRequest,
 } from '@nestjs/throttler';
 
+/**
+ * Clients are tracked by `req.ip` alone (ThrottlerGuard's default tracker).
+ * Nothing the client sends — User-Agent, X-Forwarded-For — is part of the
+ * key, so a header change never buys a fresh counter. `trust proxy` is off,
+ * so `req.ip` is the socket peer; enable it only for a known proxy.
+ */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  // biome-ignore lint/suspicious/noExplicitAny: Its using any because getRequestResponse return Record<string, any>
-  protected async getTracker(req: Record<string, any>): Promise<string> {
-    return `${req.ip}-${req.headers['user-agent']}`;
-  }
-
   protected async handleRequest({
     context,
     limit,

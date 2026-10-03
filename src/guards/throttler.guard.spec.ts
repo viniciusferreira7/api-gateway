@@ -25,8 +25,23 @@ describe('CustomThrottlerGuard', () => {
     guard.getRequestResponse = vi.fn(() => ({ req, res }));
   });
 
-  it('rastreia por combinação de IP e user-agent', async () => {
-    await expect(guard.getTracker(req)).resolves.toBe('1.2.3.4-UA');
+  // The User-Agent is set by the client: keying on it let anyone get a fresh
+  // counter per request by changing one header, which defeats the login
+  // brute-force limit.
+  it('tracks by IP only, whatever the user-agent', async () => {
+    const other = { ip: '1.2.3.4', headers: { 'user-agent': 'other-UA' } };
+
+    await expect(guard.getTracker(req)).resolves.toBe('1.2.3.4');
+    await expect(guard.getTracker(other)).resolves.toBe('1.2.3.4');
+  });
+
+  it('ignores a client-supplied X-Forwarded-For', async () => {
+    const forged = {
+      ip: '1.2.3.4',
+      headers: { 'x-forwarded-for': '9.9.9.9', 'user-agent': 'UA' },
+    };
+
+    await expect(guard.getTracker(forged)).resolves.toBe('1.2.3.4');
   });
 
   function buildRequest(): ThrottlerRequest {
