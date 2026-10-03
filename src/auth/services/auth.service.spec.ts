@@ -11,35 +11,13 @@ import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let jwtService: { verify: ReturnType<typeof vi.fn> };
   let httpClient: { request: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    jwtService = { verify: vi.fn() };
     httpClient = { request: vi.fn() };
-    service = new AuthService(jwtService as never, httpClient as never);
+    service = new AuthService(httpClient as never);
     vi.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
     vi.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
-  });
-
-  describe('validateJwtToken', () => {
-    it('returns the payload when the token is valid', async () => {
-      jwtService.verify.mockReturnValue({ sub: '1' });
-
-      await expect(service.validateJwtToken('token')).resolves.toEqual({
-        sub: '1',
-      });
-    });
-
-    it('throws UnauthorizedException when verify fails', async () => {
-      jwtService.verify.mockImplementation(() => {
-        throw new Error('bad');
-      });
-
-      await expect(service.validateJwtToken('token')).rejects.toBeInstanceOf(
-        UnauthorizedException
-      );
-    });
   });
 
   describe('validateSessionToken', () => {
@@ -383,20 +361,6 @@ describe('AuthService', () => {
         operation: 'register',
         outcome: 'rejected',
       });
-    });
-
-    it('counts a rejected JWT without reaching the users service', async () => {
-      jwtService.verify.mockImplementation(() => {
-        throw new Error('bad');
-      });
-
-      await expect(service.validateJwtToken('token')).rejects.toThrow();
-
-      expect(operations).toHaveBeenCalledWith(1, {
-        operation: 'validate_jwt',
-        outcome: 'rejected',
-      });
-      expect(httpClient.request).not.toHaveBeenCalled();
     });
 
     it('carries no unbounded attribute into the counter', async () => {

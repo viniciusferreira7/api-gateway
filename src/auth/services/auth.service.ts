@@ -8,7 +8,6 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import {
   HttpClientService,
   HttpRequestError,
@@ -28,7 +27,6 @@ type AuthOperation =
   | 'login'
   | 'register'
   | 'validate_session'
-  | 'validate_jwt'
   | 'validate_token';
 
 type AuthOutcome = 'succeeded' | 'rejected' | 'unavailable';
@@ -37,10 +35,7 @@ type AuthOutcome = 'succeeded' | 'rejected' | 'unavailable';
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly httpClient: HttpClientService
-  ) {}
+  constructor(private readonly httpClient: HttpClientService) {}
 
   /**
    * Records how one authentication operation ended.
@@ -134,22 +129,6 @@ export class AuthService {
         return new ServiceUnavailableException(
           'Authentication service is unavailable'
         );
-    }
-  }
-
-  async validateJwtToken(token: string): Promise<unknown> {
-    const startedAt = Date.now();
-
-    try {
-      const payload = this.jwtService.verify(token);
-
-      this.settle('validate_jwt', 'succeeded', startedAt);
-
-      return payload;
-    } catch (_err) {
-      this.settle('validate_jwt', 'rejected', startedAt);
-
-      throw new UnauthorizedException('Invalid JWT token');
     }
   }
 
