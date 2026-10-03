@@ -2,8 +2,11 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { request } from 'undici';
 import { GatewayService } from '@/gateway/services/gateway.service';
 import { metrics } from '@/observability/metrics';
+import { HttpRequestError } from '../errors/http-request.error';
 import { CircuitBreakerService } from './circuit-breaker.service';
 import { RetryService } from './retry.service';
+
+export { HttpRequestError };
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
@@ -14,17 +17,6 @@ export interface HttpRequestOptions {
   path: string;
   body?: unknown;
   headers?: Record<string, string>;
-}
-
-export class HttpRequestError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-    public readonly retryAfterMs?: number
-  ) {
-    super(message);
-    this.name = 'HttpRequestError';
-  }
 }
 
 type UpstreamOutcome =

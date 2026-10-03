@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import CircuitBreaker from 'opossum';
 import { GatewayService } from '@/gateway/services/gateway.service';
 import { metrics } from '@/observability/metrics';
+import { HttpRequestError } from '../errors/http-request.error';
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
@@ -27,6 +28,12 @@ export class CircuitBreakerService {
           errorThresholdPercentage: 50,
           resetTimeout: 30_000,
           volumeThreshold: 5,
+          // A 4xx is the caller's fault and proves the service is up. Counting
+          // it would let five wrong passwords or bad tokens open the breaker
+          // and take login down for everyone. Still rejected to the caller.
+          errorFilter: (error: unknown) =>
+            error instanceof HttpRequestError &&
+            error.status < HttpStatus.INTERNAL_SERVER_ERROR,
         }
       );
 
