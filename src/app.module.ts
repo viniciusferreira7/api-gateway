@@ -20,6 +20,7 @@ import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { UsersModule } from './users/users.module';
+import { apiGatewayDetails } from './utils/api-gateway-details';
 
 @Module({
   imports: [
@@ -51,7 +52,10 @@ import { UsersModule } from './users/users.module';
       inject: [EnvService],
     }),
     EnvModule,
-    ObservabilityModule.forRoot({ serviceName: 'api-gateway' }),
+    ObservabilityModule.forRoot({
+      serviceName: apiGatewayDetails.name,
+      serviceVersion: apiGatewayDetails.version,
+    }),
     ProxyModule,
     ConfigModule,
     GatewayModule,
