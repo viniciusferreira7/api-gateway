@@ -7,7 +7,12 @@ export class HttpRequestError extends Error {
   constructor(
     public readonly status: number,
     message: string,
-    public readonly retryAfterMs?: number
+    public readonly retryAfterMs?: number,
+    /**
+     * The `message` of a 4xx body, already checked to be short text. Safe to
+     * show the client; the 4xx body is otherwise never forwarded.
+     */
+    public readonly upstreamMessage?: string | string[]
   ) {
     super(message);
     this.name = 'HttpRequestError';

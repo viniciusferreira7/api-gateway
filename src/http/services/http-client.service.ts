@@ -28,6 +28,10 @@ type UpstreamOutcome =
 
 const IDEMPOTENT_METHODS = new Set<HttpMethod>(['GET', 'PUT', 'DELETE']);
 const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+/** Larger 4xx bodies are not ours to explain; their message is dropped. */
+const MAX_ERROR_BODY_LENGTH = 16_384;
+const MAX_MESSAGES = 20;
+const MAX_MESSAGE_LENGTH = 500;
 
 @Injectable()
 export class HttpClientService {
@@ -135,14 +139,26 @@ export class HttpClientService {
     });
 
     if (statusCode < 200 || statusCode >= 300) {
-      await responseBody.dump();
+      // Only a 4xx is read: it explains the caller's own mistake. A 5xx body
+      // may describe our internals and is discarded unread.
+      let upstreamMessage: string | string[] | undefined;
+
+      if (statusCode >= 400 && statusCode < 500) {
+        upstreamMessage = HttpClientService.messageOf(
+          await responseBody.text()
+        );
+      } else {
+        await responseBody.dump();
+      }
+
       this.logger.warn(
         `Downstream responded ${statusCode} for ${method} ${path}`
       );
       throw new HttpRequestError(
         statusCode,
         `Downstream request failed with status ${statusCode}`,
-        HttpClientService.parseRetryAfter(responseHeaders['retry-after'])
+        HttpClientService.parseRetryAfter(responseHeaders['retry-after']),
+        upstreamMessage
       );
     }
 
@@ -172,6 +188,47 @@ export class HttpClientService {
 
   private static retryAfterMs(error: unknown): number | undefined {
     return error instanceof HttpRequestError ? error.retryAfterMs : undefined;
+  }
+
+  /**
+   * The `message` of a Nest error body, when it is short text: a string or a
+   * small list of strings (what a ValidationPipe produces). Anything else —
+   * not JSON, another shape, too long — is dropped rather than forwarded.
+   */
+  private static messageOf(text: string): string | string[] | undefined {
+    if (text.length === 0 || text.length > MAX_ERROR_BODY_LENGTH) {
+      return undefined;
+    }
+
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return undefined;
+    }
+
+    const message = (parsed as { message?: unknown } | null)?.message;
+
+    const isShortText = (value: unknown): value is string =>
+      typeof value === 'string' &&
+      value.length > 0 &&
+      value.length <= MAX_MESSAGE_LENGTH;
+
+    if (isShortText(message)) {
+      return message;
+    }
+
+    if (
+      Array.isArray(message) &&
+      message.length > 0 &&
+      message.length <= MAX_MESSAGES &&
+      message.every(isShortText)
+    ) {
+      return message;
+    }
+
+    return undefined;
   }
 
   private static parseRetryAfter(

@@ -121,6 +121,90 @@ describe('HttpClientService', () => {
     expect(requestMock).toHaveBeenCalledTimes(2);
   });
 
+  describe('upstream message', () => {
+    const rejectionOf = (status: number, text: string) => {
+      requestMock.mockResolvedValueOnce(makeResponse(status, { text }));
+
+      // POST: never retried, so one response is enough.
+      return service
+        .request('users' as never, { method: 'POST', path: '/x' })
+        .catch((error: unknown) => error);
+    };
+
+    it('carries the message string of a 4xx body', async () => {
+      const error = await rejectionOf(
+        401,
+        JSON.stringify({
+          message: 'Credenciais inválidas',
+          error: 'Unauthorized',
+          statusCode: 401,
+        })
+      );
+
+      expect(error).toBeInstanceOf(HttpRequestError);
+      expect(error).toMatchObject({
+        status: 401,
+        upstreamMessage: 'Credenciais inválidas',
+      });
+    });
+
+    it('carries the message list of a 4xx validation body', async () => {
+      const message = ['password must be valid text of at most 72 bytes'];
+
+      const error = await rejectionOf(
+        400,
+        JSON.stringify({ message, error: 'Bad Request', statusCode: 400 })
+      );
+
+      expect(error).toMatchObject({ status: 400, upstreamMessage: message });
+    });
+
+    it.each([
+      ['an empty body', ''],
+      ['a body that is not JSON', '<html>Bad Request</html>'],
+      ['JSON null', 'null'],
+      ['a numeric message', JSON.stringify({ message: 42 })],
+      ['an object message', JSON.stringify({ message: { detail: 'x' } })],
+      ['an empty message', JSON.stringify({ message: '' })],
+      ['a mixed message list', JSON.stringify({ message: ['ok', 7] })],
+      ['an empty message list', JSON.stringify({ message: [] })],
+      [
+        'more than 20 messages',
+        JSON.stringify({ message: Array.from({ length: 21 }, () => 'x') }),
+      ],
+      [
+        'a message over 500 characters',
+        JSON.stringify({ message: 'x'.repeat(501) }),
+      ],
+      [
+        'a body over 16384 characters',
+        JSON.stringify({ message: 'x', padding: 'y'.repeat(16_384) }),
+      ],
+    ])('drops the message of %s', async (_case, text) => {
+      const error = await rejectionOf(409, text);
+
+      expect(error).toBeInstanceOf(HttpRequestError);
+      expect((error as HttpRequestError).upstreamMessage).toBeUndefined();
+    });
+
+    it('never reads the body of a 5xx', async () => {
+      const response = makeResponse(500, {
+        text: JSON.stringify({
+          message: 'psql: relation "users" does not exist',
+        }),
+      });
+      requestMock.mockResolvedValueOnce(response);
+
+      const error = await service
+        .request('users' as never, { method: 'POST', path: '/x' })
+        .catch((rejection: unknown) => rejection);
+
+      expect((error as HttpRequestError).upstreamMessage).toBeUndefined();
+      expect(response.body.dump).toHaveBeenCalled();
+      expect(response.body.text).not.toHaveBeenCalled();
+    });
+  });
+
   describe('metrics', () => {
     let requests: ReturnType<typeof vi.spyOn>;
     let duration: ReturnType<typeof vi.spyOn>;
