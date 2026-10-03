@@ -1,4 +1,15 @@
+import { LogLevel } from '@viniciusferreira7/signals';
 import { z } from 'zod';
+
+const LOG_LEVELS: LogLevel[] = [
+  'fatal',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
+  'silent',
+] as const;
 
 const numberFromEnv = z
   .string()
@@ -35,6 +46,7 @@ export const envSchema = z.object({
 
   OTEL_SERVICE_NAME: z.string().min(1),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url(),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 });
 
 export type Env = z.infer<typeof envSchema>;

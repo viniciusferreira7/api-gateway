@@ -26,6 +26,22 @@ describe('envSchema', () => {
     expect(env.PORT).toBe(3333);
   });
 
+  it('defaults LOG_LEVEL to info', () => {
+    expect(envSchema.parse(baseEnv).LOG_LEVEL).toBe('info');
+  });
+
+  it('accepts a known LOG_LEVEL', () => {
+    expect(envSchema.parse({ ...baseEnv, LOG_LEVEL: 'debug' }).LOG_LEVEL).toBe(
+      'debug'
+    );
+  });
+
+  it('rejects an unknown LOG_LEVEL', () => {
+    expect(() =>
+      envSchema.parse({ ...baseEnv, LOG_LEVEL: 'verbose' })
+    ).toThrow();
+  });
+
   it('aceita CORS_ORIGIN curinga', () => {
     expect(envSchema.parse(baseEnv).CORS_ORIGIN).toBe('*');
   });
