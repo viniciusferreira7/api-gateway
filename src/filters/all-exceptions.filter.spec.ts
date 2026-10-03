@@ -80,13 +80,53 @@ describe('AllExceptionsFilter', () => {
   });
 
   describe('HttpRequestError', () => {
-    it('keeps a downstream 4xx status without forwarding its message', () => {
+    it('keeps a downstream 4xx status and its upstream message', () => {
+      filter.catch(
+        new HttpRequestError(
+          401,
+          'Downstream request failed with status 401',
+          undefined,
+          'Credenciais inválidas'
+        ),
+        host
+      );
+
+      expect(status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+      expect(bodySent()).toMatchObject({
+        statusCode: HttpStatus.UNAUTHORIZED,
+        path: '/api/auth/login',
+        message: 'Credenciais inválidas',
+      });
+    });
+
+    it('keeps the upstream validation messages of a 400', () => {
+      const messages = ['password must be valid text of at most 72 bytes'];
+
+      filter.catch(
+        new HttpRequestError(400, 'failed', undefined, messages),
+        host
+      );
+
+      expect(bodySent().message).toEqual(messages);
+    });
+
+    it('answers a generic message for a 4xx without an upstream message', () => {
       filter.catch(
         new HttpRequestError(409, 'duplicate key on users.email'),
         host
       );
 
       expect(status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
+      expect(bodySent().message).toBe('Upstream service request failed');
+    });
+
+    it('never forwards an upstream message on a 5xx', () => {
+      filter.catch(
+        new HttpRequestError(503, 'down', undefined, 'users service down'),
+        host
+      );
+
+      expect(status).toHaveBeenCalledWith(HttpStatus.BAD_GATEWAY);
       expect(bodySent().message).toBe('Upstream service request failed');
     });
 

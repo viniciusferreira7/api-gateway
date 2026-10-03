@@ -72,15 +72,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
     message: string | string[];
   } {
     // Raised by HttpClientService when a downstream service answers non-2xx.
-    // The status is worth preserving — a 503 upstream is a 503 here, not a 500
-    // — but the message names another service and is dropped.
+    // The status is worth preserving — a 503 upstream is a 503 here, not a 500.
+    // A 4xx may carry the downstream `message`, already checked to be short
+    // text about the caller's own request; the error's own message names
+    // another service and is never sent.
     if (exception instanceof HttpRequestError) {
+      if (exception.status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        return {
+          status: HttpStatus.BAD_GATEWAY,
+          message: 'Upstream service request failed',
+        };
+      }
+
       return {
-        status:
-          exception.status >= HttpStatus.INTERNAL_SERVER_ERROR
-            ? HttpStatus.BAD_GATEWAY
-            : exception.status,
-        message: 'Upstream service request failed',
+        status: exception.status,
+        message: exception.upstreamMessage ?? 'Upstream service request failed',
       };
     }
 
