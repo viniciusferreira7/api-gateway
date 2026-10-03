@@ -172,6 +172,36 @@ describe('AuthService', () => {
       );
     });
 
+    it("answers the users service's own message for rejected credentials", async () => {
+      httpClient.request.mockRejectedValue(
+        new HttpRequestError(401, 'failed', undefined, 'Credenciais inválidas')
+      );
+
+      await expect(service.login(credentials)).rejects.toThrow(
+        new UnauthorizedException('Credenciais inválidas')
+      );
+    });
+
+    it('falls back to a generic message when the 401 carries none', async () => {
+      httpClient.request.mockRejectedValue(new HttpRequestError(401, 'nope'));
+
+      await expect(service.login(credentials)).rejects.toThrow(
+        'Invalid credentials'
+      );
+    });
+
+    // Forwarding the text of a 404 ("User not found") would tell an anonymous
+    // caller which emails are registered.
+    it('never forwards the message of a 404', async () => {
+      httpClient.request.mockRejectedValue(
+        new HttpRequestError(404, 'failed', undefined, 'User not found')
+      );
+
+      await expect(service.login(credentials)).rejects.toThrow(
+        new UnauthorizedException('Invalid credentials')
+      );
+    });
+
     // A 404 must be indistinguishable from a 401, otherwise an anonymous
     // caller can enumerate registered emails.
     it('treats a 404 as UnauthorizedException', async () => {
@@ -234,6 +264,47 @@ describe('AuthService', () => {
 
       await expect(service.register(payload)).rejects.toBeInstanceOf(
         ServiceUnavailableException
+      );
+    });
+
+    it("answers the users service's own message for a duplicate email", async () => {
+      httpClient.request.mockRejectedValue(
+        new HttpRequestError(
+          409,
+          'failed',
+          undefined,
+          'Email already registered'
+        )
+      );
+
+      await expect(service.register(payload)).rejects.toThrow(
+        new ConflictException('Email already registered')
+      );
+    });
+
+    it("answers the users service's validation messages", async () => {
+      const messages = ['password must be valid text of at most 72 bytes'];
+      httpClient.request.mockRejectedValue(
+        new HttpRequestError(400, 'failed', undefined, messages)
+      );
+
+      const error = await service
+        .register(payload)
+        .catch((rejection: unknown) => rejection);
+
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        message: messages,
+      });
+    });
+
+    it('keeps a 429 generic even with an upstream message', async () => {
+      httpClient.request.mockRejectedValue(
+        new HttpRequestError(429, 'failed', undefined, 'ThrottlerException')
+      );
+
+      await expect(service.register(payload)).rejects.toThrow(
+        'Too many requests, try again later'
       );
     });
 

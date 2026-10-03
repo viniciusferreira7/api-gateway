@@ -81,9 +81,9 @@ export class AuthService {
    * Anything that is not an `HttpRequestError` — a timeout, a socket error, an
    * open circuit breaker — never reached the service, so it is a 503.
    *
-   * Messages stay generic on purpose: the downstream body may carry internal
-   * detail and is never forwarded. The cause is logged instead, where the
-   * trace_id correlates it to the request.
+   * A 4xx answers the users service's own `message` when it carried a safe one
+   * (see `HttpRequestError.upstreamMessage`); a 5xx never explains itself. The
+   * cause is logged, where the trace_id correlates it to the request.
    */
   private upstreamFailure(error: unknown, operation: string): HttpException {
     if (!(error instanceof HttpRequestError)) {
@@ -102,21 +102,27 @@ export class AuthService {
       `${operation} rejected by the users service with status ${error.status}`
     );
 
+    // The users service's own `message` is about the caller's request and is
+    // forwarded when present; the generic text covers a body without one.
+    const upstream = error.upstreamMessage;
+
     switch (error.status) {
-      // 404 is folded in with 401 deliberately: on a login attempt it means the
-      // account does not exist, and answering differently would let an
-      // unauthenticated caller enumerate registered emails.
       case HttpStatus.UNAUTHORIZED:
       case HttpStatus.FORBIDDEN:
+        return new UnauthorizedException(upstream ?? 'Invalid credentials');
+
+      // Folded into 401 with a fixed text on purpose: on a login attempt a 404
+      // means the account does not exist, and its message ("User not found")
+      // would let an unauthenticated caller enumerate registered emails.
       case HttpStatus.NOT_FOUND:
         return new UnauthorizedException('Invalid credentials');
 
       case HttpStatus.BAD_REQUEST:
       case HttpStatus.UNPROCESSABLE_ENTITY:
-        return new BadRequestException('Invalid request payload');
+        return new BadRequestException(upstream ?? 'Invalid request payload');
 
       case HttpStatus.CONFLICT:
-        return new ConflictException('Email is already registered');
+        return new ConflictException(upstream ?? 'Email is already registered');
 
       case HttpStatus.TOO_MANY_REQUESTS:
         return new HttpException(
