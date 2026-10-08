@@ -182,3 +182,45 @@ pnpm test:watch
 # with coverage (unit)
 pnpm test:cov
 ```
+
+## System test
+
+`pnpm test:system` walks the whole marketplace through the gateway, against the
+real services: sign-up, login, catalog, cart, checkout, order, and one payment
+approved (300.00) and one rejected (49.99). Nothing is mocked, so everything
+must be running first. It lives in `test/system/*.system-spec.ts`, which no
+other lane picks up.
+
+1. Use **the same `JWT_SECRET`** in the `.env` of users-service,
+   products-service, checkout-service and payments-service (users signs the
+   tokens, the others verify them).
+2. Infrastructure:
+
+   ```bash
+   (cd ../messaging-service && docker compose up -d)   # RabbitMQ 5672
+   (cd ../users-service && docker compose up -d)       # Postgres 5435
+   (cd ../products-service && docker compose up -d)    # Postgres 5437
+   (cd ../checkout-service && docker compose up -d)    # Postgres 5439
+   (cd ../payments-service && docker compose up -d)    # Postgres 5433
+   ```
+
+3. Services, each with `pnpm start:dev`:
+
+   | Service          | Port |
+   |------------------|------|
+   | users-service    | 3334 |
+   | products-service | 3335 |
+   | checkout-service | 3336 |
+   | payments-service | 3337 |
+   | api-gateway      | 3333 |
+
+4. Check `curl -s localhost:3333/api/healthz` answers `"status":"ok"`, then:
+
+   ```bash
+   pnpm test:system
+   # another address: GATEWAY_URL=http://host:port/api pnpm test:system
+   ```
+
+The pre-flight check fails naming the service that is down. One run makes 2
+sign-ups and 2 logins; the gateway allows 3 sign-ups and 5 logins per minute
+per IP, so running it again within a minute may get a 429.
