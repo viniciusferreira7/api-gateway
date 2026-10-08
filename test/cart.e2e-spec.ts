@@ -88,14 +88,17 @@ describe('Cart routes (e2e)', () => {
   });
 
   it('answers the checkout validation messages as an array', async () => {
-    const messages = ['property price should not exist'];
+    // A message checkout really emits (AddCartItemDto). Checkout's pipe strips
+    // unknown properties rather than refusing them, so an extra `price` never
+    // produces a 400 — and never sets the price either.
+    const messages = ['quantity must not be greater than 99'];
     proxyService.proxyRequest.mockRejectedValue(
       new HttpRequestError(400, 'x', undefined, messages)
     );
 
     const response = await authed()
       .post('/api/cart/items')
-      .send({ productId: PRODUCT_ID, quantity: 1, price: 0 })
+      .send({ productId: PRODUCT_ID, quantity: 100 })
       .expect(400);
 
     expect(response.body.message).toEqual(messages);
