@@ -18,6 +18,7 @@ import { CustomThrottlerGuard } from './guards/throttler.guard';
 import { HttpModule } from './http/http.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
+import { ProductsModule } from './products/products.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { UsersModule } from './users/users.module';
 import { apiGatewayDetails } from './utils/api-gateway-details';
@@ -63,6 +64,7 @@ import { apiGatewayDetails } from './utils/api-gateway-details';
     MiddlewareModule,
     AuthModule,
     UsersModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [
