@@ -10,7 +10,7 @@ import {
  *
  * Needs users, products, checkout, payments, RabbitMQ and their databases up,
  * with one JWT_SECRET shared by users, products, checkout and payments — see
- * README, "Teste de sistema".
+ * README, "System test".
  *
  * One run registers 2 users and logs in twice. The gateway allows 3 registers
  * and 5 logins per minute per IP, so a second run within a minute may get 429.
