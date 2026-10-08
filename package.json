@@ -19,6 +19,7 @@
     "test:unit": "vitest run",
     "test:int": "vitest run --config ./vitest.config.int.ts",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "test:system": "vitest run --config ./vitest.config.system.ts",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage"
   },
