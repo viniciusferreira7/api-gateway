@@ -1,12 +1,5 @@
+import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import {
-  ApiInternalServerErrorResponse,
   ApiOkResponse,
   ApiServiceUnavailableResponse,
   ApiTags,
@@ -33,58 +26,50 @@ export class AppController {
     };
   }
 
+  /**
+   * 503 when any downstream service is unhealthy, so load balancers and the
+   * system test can trust the status code. The body names services and their
+   * verdict only.
+   */
   @Get('/healthz')
-  @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: 'All downstream services are healthy',
     schema: {
       example: {
         status: 'ok',
-        timestamp: '2024-01-01T00:00:00.000Z',
-        users: { status: 'SERVING' },
-        checkouts: { status: 'SERVING' },
-        products: { status: 'SERVING' },
-        payments: { status: 'SERVING' },
+        timestamp: '2026-10-08T00:00:00.000Z',
+        services: {
+          users: 'healthy',
+          checkouts: 'healthy',
+          products: 'healthy',
+          payments: 'healthy',
+        },
       },
     },
   })
   @ApiServiceUnavailableResponse({
-    description: 'One or more downstream services are unavailable',
+    description: 'At least one downstream service is unhealthy',
   })
-  @ApiInternalServerErrorResponse({
-    description: 'Unexpected error during health check',
-  })
-  async getHealth() {
-    const [users, checkouts, products, payments] = await Promise.all([
-      this.proxyService.getServiceHealth('users'),
-      this.proxyService.getServiceHealth('checkouts'),
-      this.proxyService.getServiceHealth('products'),
-      this.proxyService.getServiceHealth('payments'),
-    ]);
+  async getHealth(
+    @Res({ passthrough: true }) reply: { status: (code: number) => unknown }
+  ) {
+    const names = ['users', 'checkouts', 'products', 'payments'] as const;
+    const verdicts = await Promise.all(
+      names.map((name) => this.proxyService.getServiceHealth(name))
+    );
+    const services = Object.fromEntries(
+      names.map((name, index) => [name, verdicts[index].status])
+    ) as Record<(typeof names)[number], 'healthy' | 'unhealthy'>;
+    const healthy = verdicts.every(({ status }) => status === 'healthy');
 
-    const status =
-      !users.error && !checkouts.error && !products.error && !payments.error
-        ? 'ok'
-        : 'error';
-
-    if (status === 'error') {
-      return new ServiceUnavailableException({
-        status,
-        timestamp: new Date().toISOString(),
-        users,
-        checkouts,
-        products,
-        payments,
-      });
+    if (!healthy) {
+      reply.status(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     return {
-      status,
+      status: healthy ? 'ok' : 'error',
       timestamp: new Date().toISOString(),
-      users,
-      checkouts,
-      products,
-      payments,
+      services,
     };
   }
 }

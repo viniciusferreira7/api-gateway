@@ -97,11 +97,19 @@ describe('ProxyService', () => {
       });
     });
 
-    it('retorna unhealthy com a mensagem de erro quando falha', async () => {
-      httpClient.request.mockRejectedValue(new Error('timeout'));
+    it('retorna só unhealthy quando falha, com a causa no log', async () => {
+      const warn = vi
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => undefined);
+      httpClient.request.mockRejectedValue(
+        new Error('connect ECONNREFUSED 127.0.0.1:3337')
+      );
 
       await expect(service.getServiceHealth('users' as never)).resolves.toEqual(
-        { status: 'unhealthy', error: 'timeout' }
+        { status: 'unhealthy' }
+      );
+      expect(warn).toHaveBeenCalledWith(
+        'users health check failed: connect ECONNREFUSED 127.0.0.1:3337'
       );
     });
   });

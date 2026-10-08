@@ -60,7 +60,13 @@ export class ProxyService {
     }
   }
 
-  public async getServiceHealth(serviceName: ServicesName) {
+  /**
+   * Only the verdict leaves this method: the cause names hosts and ports and
+   * goes to the log, never to the public healthz body.
+   */
+  public async getServiceHealth(
+    serviceName: ServicesName
+  ): Promise<{ status: 'healthy' | 'unhealthy' }> {
     try {
       await this.httpClient.request(serviceName, {
         method: 'GET',
@@ -69,10 +75,11 @@ export class ProxyService {
 
       return { status: 'healthy' };
     } catch (error) {
-      return {
-        status: 'unhealthy',
-        error: error instanceof Error ? error.message : 'unknown error',
-      };
+      this.logger.warn(
+        `${serviceName} health check failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+
+      return { status: 'unhealthy' };
     }
   }
 }
