@@ -26,12 +26,12 @@ describe('GatewayService', () => {
       products: {
         url: 'http://products',
         timeout: 10_000,
-        forwardsClientErrors: false,
+        forwardsClientErrors: true,
       },
       checkouts: {
         url: 'http://checkouts',
         timeout: 10_000,
-        forwardsClientErrors: false,
+        forwardsClientErrors: true,
       },
       payments: {
         url: 'http://payments',
