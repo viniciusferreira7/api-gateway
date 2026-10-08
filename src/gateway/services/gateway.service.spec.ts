@@ -36,7 +36,7 @@ describe('GatewayService', () => {
       payments: {
         url: 'http://payments',
         timeout: 10_000,
-        forwardsClientErrors: false,
+        forwardsClientErrors: true,
       },
     });
   });

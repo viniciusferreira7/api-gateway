@@ -34,7 +34,9 @@ export class GatewayService {
       payments: {
         url: this.configService.get('PAYMENTS_SERVICE_URL', { infer: true }),
         timeout: 10_000,
-        forwardsClientErrors: false,
+        // Reviewed: "Payment not found", Unauthorized and the ValidationPipe
+        // arrays.
+        forwardsClientErrors: true,
       },
     } as const;
 

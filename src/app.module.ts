@@ -19,6 +19,7 @@ import { CustomThrottlerGuard } from './guards/throttler.guard';
 import { HttpModule } from './http/http.module';
 import { LoggingMiddleware } from './middleware/logging/logging.middleware';
 import { MiddlewareModule } from './middleware/middleware.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 import { ProxyModule } from './proxy/proxy.module';
 import { UsersModule } from './users/users.module';
@@ -67,6 +68,7 @@ import { apiGatewayDetails } from './utils/api-gateway-details';
     UsersModule,
     ProductsModule,
     CheckoutModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [
