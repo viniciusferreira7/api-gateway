@@ -10,6 +10,7 @@ import { ObservabilityModule } from '@viniciusferreira7/signals/nest';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { CheckoutModule } from './checkout/checkout.module';
 import { envSchema } from './env/env';
 import { EnvModule } from './env/env.module';
 import { EnvService } from './env/env.service';
@@ -65,6 +66,7 @@ import { apiGatewayDetails } from './utils/api-gateway-details';
     AuthModule,
     UsersModule,
     ProductsModule,
+    CheckoutModule,
   ],
   controllers: [AppController],
   providers: [

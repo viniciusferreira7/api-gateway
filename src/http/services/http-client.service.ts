@@ -10,7 +10,7 @@ export { HttpRequestError };
 
 type ServicesName = keyof ReturnType<GatewayService['serviceConfig']>;
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface HttpRequestOptions {
   method: HttpMethod;
