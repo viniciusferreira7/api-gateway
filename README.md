@@ -1,7 +1,5 @@
 # API Gateway
 
-> ⚠️ **Work In Progress** - This project is currently under active development.
-
 Central entry point for the Marketplace microservices architecture. Routes HTTP requests to downstream HTTP services, handling cross-cutting concerns like authentication, authorization, rate limiting, CORS, request validation, and resilience (circuit breaking).
 
 Built with [NestJS](https://nestjs.com/) 11, [undici](https://undici.nodejs.org/) for downstream HTTP, and Zod-validated configuration.
@@ -13,7 +11,7 @@ Built with [NestJS](https://nestjs.com/) 11, [undici](https://undici.nodejs.org/
 - **Rate limiting** — three configurable tiers (`short` / `medium` / `long`) via `@nestjs/throttler`, applied globally.
 - **Resilience** — per-service circuit breakers (`opossum`) with error-threshold, volume-threshold, and reset handling, plus automatic retries with exponential backoff and full jitter for idempotent downstream calls.
 - **Security hardening** — `helmet` (CSP, HSTS), strict CORS allowlist with credentials, and a global `ValidationPipe` (`whitelist` + `forbidNonWhitelisted`).
-- **Observability** — request logging middleware applied to all routes.
+- **Observability** — OpenTelemetry traces, metrics and logs through the `@viniciusferreira7/signals` preload, exported over OTLP to the [observability](https://github.com/viniciusferreira7/observability) stack; custom metrics for auth operations, downstream calls, retries and circuit-breaker transitions; request logging middleware on every route.
 - **Config validation** — all environment variables validated at startup with a Zod schema; the app fails fast on misconfiguration.
 - **API docs** — Swagger/OpenAPI with Bearer and session-token security schemes.
 
@@ -26,7 +24,7 @@ Client
 API Gateway (REST/HTTP, global prefix /api)
   │
   ├── Middleware       → LoggingMiddleware (all routes)
-  ├── Guards           → JwtAuthGuard · SessionGuard · RoleGuard · CustomThrottlerGuard
+  ├── Guards           → ValidateTokenGuard · SessionGuard · RoleGuard · CustomThrottlerGuard
   ├── AuthModule       → login / register, JWT issuing, session validation
   │
   ├── GatewayService          → resolves downstream service URLs and timeouts
@@ -51,14 +49,22 @@ src/
 │   ├── dtos/
 │   ├── services/
 │   └── strategies/ # jwt.strategy
+├── checkout/       # Cart and order proxy routes (checkout-service)
+├── config/         # Swagger document
 ├── env/            # Environment validation (Zod schema) + EnvService
+├── filters/        # Global exception filter with generic error bodies
 ├── gateway/        # Service URL and timeout configuration
 ├── http/           # undici HTTP client, retry, and circuit breaker
 │   └── services/   # http-client.service, retry.service, circuit-breaker.service
-├── guards/         # jwt-auth, session, role, throttler guards
-├── interfaces/     # Shared TS types (user session)
+├── guards/         # validate-token, session, role, throttler guards
+├── interfaces/     # Shared TS types (user session, authenticated request)
 ├── middleware/     # Logging middleware
+├── observability/  # Custom OpenTelemetry metrics
+├── payments/       # Payment lookup proxy route (payments-service)
+├── products/       # Catalog proxy routes (products-service)
 ├── proxy/          # Request forwarding and health check
+├── users/          # User proxy routes (users-service)
+├── utils/          # Service metadata
 ├── app.module.ts
 └── main.ts
 ```
@@ -83,6 +89,9 @@ Copy `.env.example` to `.env` and fill in the values. All variables are validate
 | `RATE_LIMIT_MEDIUM`    | Max requests per window for the `medium` tier     | Yes      |
 | `RATE_TTL_LONG`        | Window (ms) for the `long` rate-limit tier        | Yes      |
 | `RATE_LIMIT_LONG`      | Max requests per window for the `long` tier       | Yes      |
+| `OTEL_SERVICE_NAME`    | `service.name` on every signal (`api-gateway`)    | Yes      |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint of the collector             | Yes      |
+| `LOG_LEVEL`            | Minimum log level (default: `info`)               | No       |
 
 > Numeric values accept `_` separators (e.g. `60_000`).
 
@@ -136,6 +145,45 @@ the users service before forwarding.
 | `GET`  | `/api/users/profile`  | The logged-in account              |
 | `GET`  | `/api/users/sellers`  | Active sellers, without emails     |
 | `GET`  | `/api/users/:id`      | One user by UUID, without email    |
+
+### Products endpoints
+
+The catalog reads are public and carry no token downstream. Each route is
+forwarded one at a time, so nothing products-service adds later becomes
+reachable through the gateway by accident.
+
+| Method | Route                          | Auth        | Description                         |
+|--------|--------------------------------|-------------|-------------------------------------|
+| `GET`  | `/api/products`                | Public      | Active products, newest first       |
+| `GET`  | `/api/products/seller/:sellerId` | Public    | A seller's active products          |
+| `GET`  | `/api/products/:id`            | Public      | One active product                  |
+| `POST` | `/api/products`                | Seller      | Create a product (`403` for buyers) |
+
+### Cart and orders endpoints
+
+All require a token; the cart and the orders belong to the user in it.
+
+| Method   | Route                        | Description                                         |
+|----------|------------------------------|-----------------------------------------------------|
+| `GET`    | `/api/cart`                  | The active cart, empty when there is none           |
+| `POST`   | `/api/cart/items`            | Add `{ productId, quantity }` to the cart           |
+| `DELETE` | `/api/cart/items/:itemId`    | Remove an item from the cart                        |
+| `POST`   | `/api/cart/checkout`         | Turn the cart into a pending order (`{ paymentMethod }`); never retried |
+| `GET`    | `/api/orders`                | The user's orders, newest first                     |
+| `GET`    | `/api/orders/:id`            | One of the user's orders, with its items            |
+
+### Payments endpoints
+
+| Method | Route                      | Description                                                      |
+|--------|----------------------------|------------------------------------------------------------------|
+| `GET`  | `/api/payments/:orderId`   | The payment of one of the user's orders: `404` until it is consumed, then `pending`, then `approved` or `rejected` |
+
+### Health endpoints
+
+| Method | Route          | Description                                                        |
+|--------|----------------|--------------------------------------------------------------------|
+| `GET`  | `/api/readyz`  | The gateway itself is up                                           |
+| `GET`  | `/api/healthz` | Verdict of every downstream service; `503` when any is unhealthy   |
 
 ## Scripts
 
@@ -224,3 +272,7 @@ other lane picks up.
 The pre-flight check fails naming the service that is down. One run makes 2
 sign-ups and 2 logins; the gateway allows 3 sign-ups and 5 logins per minute
 per IP, so running it again within a minute may get a 429.
+
+To generate traffic for the observability dashboards instead of asserting on
+it, the `user-flow` script next to this repository walks the same journey with
+fake data: `cd ../user-flow && pnpm flow 3`.
